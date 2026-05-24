@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { Inter, Sora } from "next/font/google";
+import { Analytics } from "@vercel/analytics/next";
 import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { StarBackground } from "@/components/ui/StarBackground";
@@ -89,6 +90,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="relative z-10 pt-16">{children}</main>
         <Footer />
         <StickyBottomCTA />
+        <Analytics />
       </body>
     </html>
   );

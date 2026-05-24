@@ -1,0 +1,16 @@
+{
+  "name": "VivaAI Astrology",
+  "short_name": "VivaAI",
+  "description": "Free AI-powered Vedic Kundali, daily horoscope, compatibility matching & personalized astrology insights.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0b14",
+  "theme_color": "#ffb347",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml"
+    }
+  ]
+}

@@ -1,0 +1,71 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Accurate Vedic kundli generator with Janma Rashi, Nakshatra, Lagna, graha positions, houses, and dasha timeline.">
+    <title>Cosmic Astro | Accurate Vedic Kundli</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+    <main class="container">
+        <header class="hero">
+            <p class="eyebrow">HINDU VEDIC ASTROLOGY</p>
+            <h1 class="title">Accurate Janma Kundli</h1>
+            <p class="subtitle">Detailed lifetime-style kundli from birth date, time, and place.</p>
+        </header>
+
+        <form id="astroForm" novalidate>
+            <div class="form-grid">
+                <div class="input-group">
+                    <label for="username">Login username</label>
+                    <input type="text" id="username" placeholder="abhisekh_soni" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="fullname">Full name</label>
+                    <input type="text" id="fullname" placeholder="Abhisekh Soni" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="birthname">Birth name</label>
+                    <input type="text" id="birthname" placeholder="Name at birth" required>
+                </div>
+
+                <div class="input-group">
+                    <label for="dob">Date of birth</label>
+                    <input type="date" id="dob" required>
+                </div>
+
+                <div class="input-group input-group-wide">
+                    <label>Time of birth</label>
+                    <div class="time-row">
+                        <select id="birthHour" required></select>
+                        <span class="time-sep">:</span>
+                        <select id="birthMinute" required></select>
+                        <select id="meridiem" required>
+                            <option value="AM">AM</option>
+                            <option value="PM">PM</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="input-group input-group-wide">
+                    <label for="pob">Place of birth</label>
+                    <input type="text" id="pob" placeholder="City, State, Country" required>
+                </div>
+            </div>
+
+            <button id="submitBtn" type="submit">Generate Detailed Kundli</button>
+        </form>
+
+        <section id="result" class="result-card hidden" aria-live="polite"></section>
+
+        <noscript>
+            <p class="noscript">JavaScript is required to generate your kundli.</p>
+        </noscript>
+    </main>
+
+    <script src="script.js"></script>
+</body>
+</html>

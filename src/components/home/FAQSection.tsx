@@ -6,7 +6,7 @@ import { ChevronDown } from "lucide-react";
 const FAQS = [
   {
     q: "Is the Kundali generator really free?",
-    a: "Yes! The basic Kundali report is 100% free with no sign-up. You get your Lagna, Moon sign, Nakshatra, Dasha period, and a preview of planetary positions. For the complete detailed report with Dosha analysis, Yoga detection, life predictions, gemstones, remedies, and a downloadable PDF — it's just ₹49 (75% off from ₹199 for a limited time).",
+    a: "Yes! The complete Kundali report is 100% free — no sign-up, no limits. You get the full birth chart with all 9 planets, Dosha analysis, Yoga detection, Dasha timeline, predictions, gemstones, and remedies. If you want to save it as a PDF for offline access or to share with family, it's just ₹19.",
   },
   {
     q: "How accurate are the calculations?",

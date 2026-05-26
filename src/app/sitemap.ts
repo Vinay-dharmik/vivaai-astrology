@@ -6,11 +6,16 @@ import { BODY_ORDER } from "@/lib/astrology/constants";
 
 const BASE = "https://vivaai.in";
 const SIGNS = ["aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn","aquarius","pisces"];
+const HOUSE_SUFFIX = (h: number) => h === 1 ? "1st" : h === 2 ? "2nd" : h === 3 ? "3rd" : `${h}th`;
 
+/**
+ * Comprehensive sitemap including ALL programmatic pages.
+ * Google sitemaps support up to 50,000 URLs — we use ~1000+.
+ */
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date().toISOString();
 
-  // Core pages
+  // ── Core pages (highest priority) ─────────────────
   const core: MetadataRoute.Sitemap = [
     { url: BASE, lastModified: now, changeFrequency: "daily", priority: 1.0 },
     { url: `${BASE}/kundali`, lastModified: now, changeFrequency: "weekly", priority: 0.95 },
@@ -24,6 +29,10 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/calculator`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/calculator/numerology`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
     { url: `${BASE}/calculator/age`, lastModified: now, changeFrequency: "monthly", priority: 0.7 },
+    { url: `${BASE}/calculator/lucky-number`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/calculator/lucky-color`, lastModified: now, changeFrequency: "daily", priority: 0.7 },
+    { url: `${BASE}/calculator/mangal-dosha`, lastModified: now, changeFrequency: "monthly", priority: 0.75 },
+    { url: `${BASE}/calculator/marriage-age`, lastModified: now, changeFrequency: "monthly", priority: 0.75 },
     { url: `${BASE}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/about`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE}/contact`, lastModified: now, changeFrequency: "monthly", priority: 0.4 },
@@ -33,7 +42,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/refund-policy`, lastModified: now, changeFrequency: "yearly", priority: 0.3 },
   ];
 
-  // Horoscope sign pages (12)
+  // ── Horoscope sign pages (12) ─────────────────
   const horoscopes: MetadataRoute.Sitemap = SIGNS.map(sign => ({
     url: `${BASE}/horoscope/${sign}`,
     lastModified: now,
@@ -41,7 +50,23 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.85,
   }));
 
-  // Blog posts
+  // ── Compatibility pages (12) ──────────────────
+  const compatibility: MetadataRoute.Sitemap = SIGNS.map(sign => ({
+    url: `${BASE}/compatibility/${sign}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.7,
+  }));
+
+  // ── Nakshatra detail pages (27) ───────────────
+  const nakshatraPages: MetadataRoute.Sitemap = NAKSHATRAS.map(nak => ({
+    url: `${BASE}/nakshatra/${slugify(nak)}`,
+    lastModified: now,
+    changeFrequency: "monthly",
+    priority: 0.65,
+  }));
+
+  // ── Blog posts (all) ──────────────────────────
   const blogs: MetadataRoute.Sitemap = BLOG_POSTS.map(post => ({
     url: `${BASE}/blog/${post.slug}`,
     lastModified: post.date,
@@ -49,30 +74,36 @@ export default function sitemap(): MetadataRoute.Sitemap {
     priority: 0.6,
   }));
 
-  // Nakshatra compatibility matrix (729 — top 50 for sitemap, rest discovered via internal links)
-  const nakCompatSample: MetadataRoute.Sitemap = [];
+  // ── ALL 729 Nakshatra Compatibility pages ─────
+  const nakCompat: MetadataRoute.Sitemap = [];
   for (let i = 0; i < 27; i++) {
-    // Include each nakshatra paired with next 2 for sitemap crawl seeding
-    for (let j = 0; j < Math.min(2, 27); j++) {
-      const n2Idx = (i + j) % 27;
-      nakCompatSample.push({
-        url: `${BASE}/nakshatra-compatibility/${slugify(NAKSHATRAS[i])}-and-${slugify(NAKSHATRAS[n2Idx])}`,
+    for (let j = 0; j < 27; j++) {
+      nakCompat.push({
+        url: `${BASE}/nakshatra-compatibility/${slugify(NAKSHATRAS[i])}-and-${slugify(NAKSHATRAS[j])}`,
         lastModified: now,
         changeFrequency: "monthly",
-        priority: 0.6,
+        priority: 0.55,
       });
     }
   }
 
-  // Planet-in-house pages (108 — sample top ones for sitemap)
-  const planetHouseSample: MetadataRoute.Sitemap = BODY_ORDER.slice(0, 5).flatMap(planet =>
-    [1,7,10].map(h => ({
-      url: `${BASE}/astrology/${planet.toLowerCase()}-in-${h}${h===1?"st":h===2?"nd":h===3?"rd":"th"}-house`,
+  // ── ALL 108 Planet-in-House pages ─────────────
+  const planetHouse: MetadataRoute.Sitemap = BODY_ORDER.flatMap(planet =>
+    Array.from({ length: 12 }, (_, h) => ({
+      url: `${BASE}/astrology/${planet.toLowerCase()}-in-${HOUSE_SUFFIX(h + 1)}-house`,
       lastModified: now,
       changeFrequency: "monthly",
       priority: 0.55,
     }))
   );
 
-  return [...core, ...horoscopes, ...blogs, ...nakCompatSample, ...planetHouseSample];
+  return [
+    ...core,
+    ...horoscopes,
+    ...compatibility,
+    ...nakshatraPages,
+    ...blogs,
+    ...nakCompat,
+    ...planetHouse,
+  ];
 }

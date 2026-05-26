@@ -8,6 +8,7 @@ const NAV_LINKS = [
   { href: "/kundali", label: "Free Kundali" },
   { href: "/horoscope", label: "Horoscope" },
   { href: "/matching", label: "Matching" },
+  { href: "/nakshatra-compatibility", label: "Nakshatra Match" },
   { href: "/panchang", label: "Panchang" },
   { href: "/calculator", label: "Tools" },
   { href: "/blog", label: "Blog" },

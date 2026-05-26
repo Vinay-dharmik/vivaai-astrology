@@ -4,6 +4,7 @@ import { Navbar } from "@/components/layout/Navbar";
 import { Footer } from "@/components/layout/Footer";
 import { StarBackground } from "@/components/ui/StarBackground";
 import { StickyBottomCTA } from "@/components/ui/StickyBottomCTA";
+import { CookieConsent } from "@/components/ui/CookieConsent";
 import { AdSenseScript } from "@/components/ui/AdBanner";
 import "./globals.css";
 
@@ -15,6 +16,16 @@ export const metadata: Metadata = {
   description:
     "Get your free AI-powered Vedic Kundali with accurate Lagna, Nakshatra, Dasha & remedies. Daily horoscope, kundali matching, zodiac compatibility & personalized astrology insights at vivaai.in. Trusted by thousands across India.",
   metadataBase: new URL("https://vivaai.in"),
+  alternates: {
+    canonical: "https://vivaai.in",
+  },
+  keywords: [
+    "free kundali", "vedic astrology", "birth chart", "AI astrology",
+    "horoscope today", "kundali matching", "nakshatra compatibility",
+    "zodiac compatibility", "panchang", "mangal dosha", "numerology",
+    "astrology calculator", "vedic horoscope", "lagna chart",
+    "daily horoscope", "marriage compatibility", "kundali online free",
+  ],
   icons: {
     icon: [
       { url: "/favicon.svg", type: "image/svg+xml" },
@@ -24,9 +35,15 @@ export const metadata: Metadata = {
   openGraph: {
     title: "VivaAI Astrology — Free Vedic Kundali & AI Astrology",
     description: "AI-powered Vedic astrology. Free Kundali, horoscopes, compatibility & remedies. Accurate birth charts trusted by thousands.",
+    url: "https://vivaai.in",
     siteName: "VivaAI Astrology",
     locale: "en_IN",
     type: "website",
+  },
+  twitter: {
+    card: "summary_large_image",
+    title: "VivaAI Astrology — Free Vedic Kundali & AI Astrology",
+    description: "Free AI-powered Vedic birth chart. Lagna, Nakshatra, Dasha & remedies. Trusted by thousands.",
   },
   robots: { index: true, follow: true },
   verification: {
@@ -89,6 +106,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="relative z-10 pt-16">{children}</main>
         <Footer />
         <StickyBottomCTA />
+        <CookieConsent />
       </body>
     </html>
   );

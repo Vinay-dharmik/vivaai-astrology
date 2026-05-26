@@ -9,6 +9,7 @@ export function seoMeta(opts: {
   description?: string;
   path?: string;
   image?: string;
+  keywords?: string[];
 }): Metadata {
   // Keep title under 60 chars by using short suffix
   const title = opts.title ? `${opts.title} — VivaAI` : `${NAME} — Free Vedic Kundali & AI Astrology`;
@@ -21,6 +22,7 @@ export function seoMeta(opts: {
     description,
     metadataBase: new URL(SITE),
     alternates: { canonical: url },
+    ...(opts.keywords ? { keywords: opts.keywords } : {}),
     openGraph: {
       title,
       description,

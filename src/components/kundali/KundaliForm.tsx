@@ -124,8 +124,9 @@ export function KundaliForm() {
       const ageYears = calc.getAgeYears(form.dob);
       const dasha = calc.getVimshottariSummary(nakInfo.lord, ageYears);
 
-      // Build detailed planet rows
+      // Build detailed planet rows with real retrograde detection
       const basicRows = calc.buildPlanetRows(sidereal, lagnaInfo.signIndex);
+      const retrogrades = calc.detectRetrogrades(birthUtc, Astronomy);
       const planets: PlanetRow[] = basicRows.map((r) => {
         const nak = calc.getNakshatraInfo(sidereal[r.body]);
         const rashiInfo = calc.getRashiInfo(sidereal[r.body]);
@@ -133,7 +134,7 @@ export function KundaliForm() {
           ...r,
           nakshatra: nak.name,
           nakshatraPada: nak.pada,
-          isRetrograde: false, // simplified
+          isRetrograde: retrogrades[r.body] ?? false,
           signDegree: rashiInfo.signDegree,
           dignity: getDignity(r.body, rashiInfo.english),
         };
@@ -375,16 +376,47 @@ function getAntardasha(mahadasha: string, age: number): string {
 }
 
 function getCareerPrediction(tenthLord: string, planets: PlanetRow[]): string {
-  const preds: Record<string, string> = {
-    Sun: "Government, administration, or leadership roles suit you best. Authority positions bring success.",
-    Moon: "Creative fields, hospitality, nursing, or public-facing roles are favorable. Emotional intelligence is your career asset.",
-    Mars: "Engineering, military, sports, surgery, or real estate bring success. Action-oriented careers suit your energy.",
-    Mercury: "Business, IT, writing, teaching, or accounting are ideal. Communication skills drive your career growth.",
-    Jupiter: "Education, law, finance, consulting, or religious work bring prosperity. Wisdom-based careers excel.",
-    Venus: "Arts, entertainment, fashion, beauty, or luxury industries suit you. Creativity is your professional strength.",
-    Saturn: "Mining, construction, agriculture, or government jobs bring steady growth. Patience and persistence are key.",
+  const merH = planets.find((p) => p.body === "Mercury")?.house ?? 0;
+  const jupH = planets.find((p) => p.body === "Jupiter")?.house ?? 0;
+  const satH = planets.find((p) => p.body === "Saturn")?.house ?? 0;
+  const sunH = planets.find((p) => p.body === "Sun")?.house ?? 0;
+  const marsH = planets.find((p) => p.body === "Mars")?.house ?? 0;
+
+  // Primary career domains based on 10th house lord
+  const primary: Record<string, string> = {
+    Sun: "Government, administration, politics, or leadership roles in large organizations. Public sector, IAS/IPS, corporate leadership.",
+    Moon: "Healthcare, hospitality, food industry, shipping, travel & tourism, nursing, psychology, or public relations.",
+    Mars: "Engineering, defense, police, surgery, construction, real estate, sports, or competitive fields.",
+    Mercury: "Information technology, data analytics, accounting, journalism, writing, teaching, e-commerce, or digital marketing.",
+    Jupiter: "Education, law, finance, banking, consulting, religious organizations, or advisory roles.",
+    Venus: "Arts, entertainment, media, fashion, beauty, interior design, luxury brands, or creative agencies.",
+    Saturn: "Mining, agriculture, manufacturing, government jobs, judiciary, research, or infrastructure development.",
   };
-  return preds[tenthLord] || "Career success comes through dedicated effort and building expertise in your chosen field.";
+
+  let text = primary[tenthLord] || "Versatile career path — success through specialized expertise.";
+
+  // Mercury influence — communication & tech boost
+  if ([1, 2, 5, 10, 11].includes(merH)) {
+    text += " Strong Mercury supports tech, communication, and business acumen.";
+  }
+  // Jupiter influence — wisdom & growth
+  if ([1, 5, 9, 10, 11].includes(jupH)) {
+    text += " Jupiter's favorable placement brings mentorship, promotions, and professional respect.";
+  }
+  // Saturn influence — discipline & persistence
+  if ([3, 6, 10, 11].includes(satH)) {
+    text += " Saturn rewards discipline — expect steady rise after age 30.";
+  }
+  // Sun in kendra — leadership potential
+  if ([1, 4, 7, 10].includes(sunH)) {
+    text += " Sun in angular house enhances authority and decision-making power.";
+  }
+  // Mars in upachaya — competitive advantage
+  if ([3, 6, 10, 11].includes(marsH)) {
+    text += " Mars in growth house gives competitive edge and entrepreneurial drive.";
+  }
+
+  return text;
 }
 
 function getFinancePrediction(secondLord: string, eleventhLord: string, planets: PlanetRow[]): string {

@@ -12,6 +12,10 @@ const TOOLS = [
   { href: "/nakshatra-compatibility", label: "Nakshatra Matching" },
   { href: "/calculator/numerology", label: "Numerology" },
   { href: "/calculator/age", label: "Age Calculator" },
+  { href: "/calculator/lucky-number", label: "Lucky Number" },
+  { href: "/calculator/lucky-color", label: "Lucky Color" },
+  { href: "/calculator/mangal-dosha", label: "Mangal Dosha" },
+  { href: "/calculator/marriage-age", label: "Marriage Age" },
 ];
 
 const SIGNS_COL1 = [

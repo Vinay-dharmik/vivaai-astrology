@@ -6,61 +6,59 @@ import Link from "next/link";
 
 const PLANS = [
   {
-    name: "Basic",
+    name: "Free Forever",
     price: "₹0",
-    period: "forever",
-    highlight: false,
+    period: "always free",
+    highlight: true,
     icon: Star,
     features: [
-      "Birth Chart Summary (Lagna, Moon, Sun)",
-      "Nakshatra, Gana, Nadi Details",
-      "Vimshottari Dasha (Current Period)",
-      "3 Planet Positions Preview",
+      "Complete Vedic Birth Chart",
+      "All 9 Planet Positions & Dignity",
+      "Nakshatra, Gana, Nadi Analysis",
+      "Full Vimshottari Dasha Timeline",
+      "Manglik & Dosha Detection",
       "Daily Horoscope (All Signs)",
       "Zodiac Compatibility",
+      "All Calculators & Tools",
     ],
-    cta: "Start Free",
+    cta: "Generate Free Kundali",
     href: "/kundali",
   },
   {
-    name: "Premium Report",
-    price: "₹49",
-    originalPrice: "₹199",
-    period: "one-time",
-    highlight: true,
-    icon: Crown,
-    features: [
-      "Everything in Basic",
-      "Full 9 Planet Analysis + Dignity",
-      "Complete 12-House Bhava Chart",
-      "Manglik, Kaal Sarp & Sade Sati Analysis",
-      "Yoga Detection (Raj, Gajakesari, etc.)",
-      "Career, Marriage & Health Predictions",
-      "Gemstone & Remedy Recommendations",
-      "Challenges & Solutions",
-      "Branded PDF Download",
-    ],
-    cta: "Get Premium Report",
-    href: "/kundali",
-    savings: "75% OFF — Limited Time",
-  },
-  {
-    name: "Matching Report",
-    price: "₹29",
+    name: "PDF Report",
+    price: "₹19",
     originalPrice: "₹99",
-    period: "per report",
+    period: "one-time",
     highlight: false,
     icon: Zap,
     features: [
+      "Everything shown on screen",
+      "Branded PDF Download",
+      "Shareable with family",
+      "Print-ready format",
+      "Offline access forever",
+    ],
+    cta: "Download PDF — ₹19",
+    href: "/kundali",
+    savings: "80% OFF",
+  },
+  {
+    name: "Matching Report",
+    price: "₹19",
+    originalPrice: "₹99",
+    period: "per report",
+    highlight: false,
+    icon: Crown,
+    features: [
       "36-Point Ashtakoot Matching",
       "Manglik Dosha Check (Both)",
-      "Detailed Compatibility Score",
-      "Marriage Timing Prediction",
+      "Compatibility Score & Analysis",
+      "PDF Download",
       "Remedies for Low Score",
     ],
     cta: "Try Matching Free",
     href: "/matching",
-    savings: "70% OFF",
+    savings: "80% OFF",
   },
 ];
 
@@ -69,16 +67,16 @@ export function PricingSection() {
     <section className="py-20" id="pricing">
       <div className="section-container">
         <h2 className="font-sora font-bold text-3xl sm:text-4xl text-center mb-3">
-          <span className="gold-text">Simple, Transparent Pricing</span>
+          <span className="gold-text">100% Free Kundali</span>
         </h2>
         <p className="text-center text-[var(--text-muted)] mb-4 max-w-xl mx-auto">
-          Start free. Pay only when you want deeper insights.
+          Full Vedic birth chart — completely free, no sign-up needed. Pay only if you want a PDF.
         </p>
         <p className="text-center text-xs text-gold-400 mb-12">
-          🔥 Over 10,000+ reports generated — Join thousands who trust VivaAI
+          🔥 Over 10,000+ kundalis generated — trusted by thousands across India
         </p>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6 max-w-4xl mx-auto">
+        <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">
           {PLANS.map((plan, i) => (
             <motion.div
               key={plan.name}
@@ -94,7 +92,7 @@ export function PricingSection() {
             >
               {plan.highlight && (
                 <div className="absolute -top-3 left-1/2 -translate-x-1/2 bg-gold-400 text-black text-xs font-bold px-4 py-1 rounded-full">
-                  MOST POPULAR
+                  100% FREE
                 </div>
               )}
               {plan.savings && (
@@ -138,8 +136,8 @@ export function PricingSection() {
         {/* Trust signals */}
         <div className="flex flex-wrap items-center justify-center gap-6 mt-10 text-xs text-[var(--text-muted)]">
           <span className="flex items-center gap-1">🔒 Secure Payment</span>
-          <span className="flex items-center gap-1">⚡ Instant Delivery</span>
-          <span className="flex items-center gap-1">💯 Satisfaction Guaranteed</span>
+          <span className="flex items-center gap-1">⚡ Instant PDF Delivery</span>
+          <span className="flex items-center gap-1">💯 No Sign-Up Required</span>
           <span className="flex items-center gap-1">📱 Works on All Devices</span>
         </div>
       </div>

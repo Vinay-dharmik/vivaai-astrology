@@ -1,3 +1,5 @@
+import { GENERATED_POSTS } from "./generated-posts";
+
 export interface BlogPost {
   slug: string;
   title: string;
@@ -8,7 +10,7 @@ export interface BlogPost {
   content: string;
 }
 
-export const BLOG_POSTS: BlogPost[] = [
+const MANUAL_POSTS: BlogPost[] = [
   {
     slug: "what-is-kundali-vedic-birth-chart",
     title: "What is a Kundali? Complete Guide to Vedic Birth Charts",
@@ -625,6 +627,12 @@ Explore your career potential with planet-in-house analysis on our [astrology pa
   },
 ];
 
+
+
+/** All blog posts — hand-written + programmatically generated */
+export const BLOG_POSTS: BlogPost[] = [...MANUAL_POSTS, ...GENERATED_POSTS];
+
 export function getPostBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug);
 }
+

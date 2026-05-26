@@ -35,7 +35,7 @@ const TESTIMONIALS = [
   {
     name: "Sneha D.",
     location: "Hyderabad",
-    text: "Best free astrology tool I've found. The nakshatra analysis was spot-on about my personality. Premium report was totally worth ₹49.",
+    text: "Best free astrology tool I've found. Everything is free and the nakshatra analysis was spot-on. Downloaded the PDF for just ₹19 to share with my parents.",
     rating: 5,
     feature: "Nakshatra",
   },

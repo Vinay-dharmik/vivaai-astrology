@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Download, Lock, Loader2, AlertCircle, CheckCircle, Eye, EyeOff, Star, Shield } from "lucide-react";
+import { Download, Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
 import type { KundaliData } from "./KundaliForm";
 
 declare global {
@@ -45,9 +45,7 @@ export function KundaliResult({ data }: { data: KundaliData }) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          amount: 4900, // ₹49 in paise
-          currency: "INR",
-          receipt: `kundali_${data.name.replace(/\s+/g, "_")}_${Date.now()}`,
+          plan: "pdf",  // ₹19 — server validates & sets amount
           notes: { name: data.name, product: "Kundali Premium Report" },
         }),
       });
@@ -131,13 +129,13 @@ export function KundaliResult({ data }: { data: KundaliData }) {
         </div>
         {isPaid ? (
           <div className="flex items-center gap-2 text-mystic-green text-sm font-semibold">
-            <CheckCircle className="w-4 h-4" /> Premium Unlocked
+            <CheckCircle className="w-4 h-4" /> PDF Downloaded
           </div>
         ) : (
           <button onClick={handleUnlock} disabled={paymentStatus === "loading"}
-            className="gold-btn text-sm px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-60 shadow-glow animate-pulse hover:animate-none">
-            {paymentStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Star className="w-4 h-4" />}
-            {paymentStatus === "loading" ? "Processing..." : "Unlock Full Report — ₹49"}
+            className="gold-btn text-sm px-5 py-2 rounded-lg flex items-center gap-2 disabled:opacity-60 shadow-glow">
+            {paymentStatus === "loading" ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            {paymentStatus === "loading" ? "Processing..." : "Download PDF — ₹19"}
           </button>
         )}
       </div>
@@ -167,39 +165,36 @@ export function KundaliResult({ data }: { data: KundaliData }) {
         </div>
       </Section>
 
-      {/* Planetary Positions — FREE (shows first 3, rest locked) */}
-      <Section title="Planetary Positions (Sidereal — Lahiri)" badge={isPaid ? "PREMIUM" : "PREVIEW"}>
+      {/* Planetary Positions — All 9 planets visible for free */}
+      <Section title="Planetary Positions (Sidereal — Lahiri)" badge="FREE">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-gold-400/20">
-                <Th>Planet</Th><Th>Longitude</Th><Th>Rashi</Th><Th>Nakshatra</Th><Th>House</Th><Th>Dignity</Th>
+                <Th>Planet</Th><Th>Longitude</Th><Th>Rashi</Th><Th>Nakshatra</Th><Th>House</Th><Th>Status</Th><Th>Dignity</Th>
               </tr>
             </thead>
             <tbody>
-              {data.planets.slice(0, isPaid ? data.planets.length : 3).map((p) => (
+              {data.planets.map((p) => (
                 <tr key={p.body} className="border-b border-[var(--border)] hover:bg-white/[0.02]">
-                  <Td bold>{p.body}</Td>
+                  <Td bold>{p.body} {p.isRetrograde ? <span className="text-red-400 text-xs">(R)</span> : ""}</Td>
                   <Td>{p.lon.toFixed(2)}°</Td>
                   <Td>{p.rashi} ({p.rashiEnglish})</Td>
                   <Td>{p.nakshatra} P{p.nakshatraPada}</Td>
                   <Td>{p.house}</Td>
+                  <Td>{p.isRetrograde ? <span className="text-red-400">Retrograde ↺</span> : <span className="text-mystic-green">Direct →</span>}</Td>
                   <Td>{p.dignity === "Exalted ⬆" ? <span className="text-mystic-green">{p.dignity}</span> : p.dignity === "Debilitated ⬇" ? <span className="text-red-400">{p.dignity}</span> : p.dignity === "Own Sign ★" ? <span className="text-gold-400">{p.dignity}</span> : p.dignity}</Td>
                 </tr>
               ))}
             </tbody>
           </table>
-          {!isPaid && (
-            <div className="text-center py-3 text-xs text-[var(--text-muted)] border-t border-[var(--border)]">
-              <Lock className="w-3 h-3 inline mr-1" />{data.planets.length - 3} more planets hidden — Unlock to see all
-            </div>
-          )}
+
         </div>
       </Section>
 
-      {/* ═══════ PAYWALL — Blurred unless paid ═══════ */}
+      {/* ═══════ ALL CONTENT FREE ═══════ */}
 
-      {/* Dosha Analysis — LOCKED */}
+      {/* Dosha Analysis */}
       <LockedSection title="Dosha Analysis (Manglik, Kaal Sarp, Sade Sati)" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
         <div className="space-y-3">
           <DoshaCard title="Manglik Dosha" active={data.doshas.manglik.status} severity={data.doshas.manglik.severity} text={data.doshas.manglik.details} />
@@ -306,16 +301,16 @@ export function KundaliResult({ data }: { data: KundaliData }) {
         ) : (
           <>
             <div className="glass-card p-6 rounded-2xl border-gold-400/30 bg-gradient-to-b from-gold-400/5 to-transparent mb-4">
-              <div className="text-xs text-gold-200 uppercase tracking-wider mb-2 font-semibold">🔮 Premium Report Includes</div>
+              <div className="text-xs text-gold-200 uppercase tracking-wider mb-2 font-semibold">📄 Save Your Report as PDF</div>
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-2 text-xs text-[var(--text-secondary)] mb-4">
-                {["Full Planetary Chart", "Dosha Analysis", "Yoga Detection", "Life Predictions", "Gemstone Guide", "Personalized Remedies", "House Chart", "Career & Marriage", "PDF Download"].map(f => (
+                {["All content shown above", "Print-ready format", "Share with family", "Offline access", "Professional layout", "Keep forever"].map(f => (
                   <div key={f} className="flex items-center gap-1.5"><CheckCircle className="w-3 h-3 text-mystic-green shrink-0" />{f}</div>
                 ))}
               </div>
               <button onClick={handleUnlock} disabled={paymentStatus === "loading"}
                 className="gold-btn px-10 py-3.5 rounded-xl text-lg font-bold flex items-center justify-center gap-2 mx-auto shadow-glow disabled:opacity-60">
-                {paymentStatus === "loading" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Star className="w-5 h-5" />}
-                {paymentStatus === "loading" ? "Creating order..." : "Unlock Full Report — ₹49"}
+                {paymentStatus === "loading" ? <Loader2 className="w-5 h-5 animate-spin" /> : <Download className="w-5 h-5" />}
+                {paymentStatus === "loading" ? "Creating order..." : "Download Full PDF — ₹19"}
               </button>
               <p className="text-xs text-[var(--text-muted)] mt-3 flex items-center justify-center gap-1">
                 <Shield className="w-3 h-3" /> Secure payment via Razorpay • Instant delivery • PDF download included
@@ -357,37 +352,8 @@ export function KundaliResult({ data }: { data: KundaliData }) {
 function LockedSection({ title, isPaid, onUnlock, paymentStatus, children }: {
   title: string; isPaid: boolean; onUnlock: () => void; paymentStatus: string; children: React.ReactNode;
 }) {
-  if (isPaid) {
-    return <Section title={title} badge="PREMIUM">{children}</Section>;
-  }
-
-  return (
-    <div className="relative">
-      <Section title={title} badge="PREMIUM">
-        <div className="relative">
-          {/* Blurred preview — shows content shape but unreadable */}
-          <div className="blur-[6px] select-none pointer-events-none opacity-50 max-h-[200px] overflow-hidden">
-            {children}
-          </div>
-          {/* Gradient fade at bottom */}
-          <div className="absolute inset-0 bg-gradient-to-t from-[rgb(10,11,20)] via-[rgba(10,11,20,0.7)] to-transparent" />
-          {/* Unlock overlay */}
-          <div className="absolute inset-0 flex flex-col items-center justify-center">
-            <div className="bg-[rgba(10,11,20,0.9)] border border-gold-400/30 rounded-xl px-6 py-4 text-center backdrop-blur-sm">
-              <Lock className="w-6 h-6 text-gold-400 mx-auto mb-2" />
-              <p className="text-sm text-white font-semibold mb-1">Premium Content</p>
-              <p className="text-xs text-[var(--text-muted)] mb-3 max-w-[200px]">{title}</p>
-              <button onClick={onUnlock} disabled={paymentStatus === "loading"}
-                className="gold-btn text-xs px-5 py-2 rounded-lg flex items-center gap-1.5 mx-auto disabled:opacity-60">
-                {paymentStatus === "loading" ? <Loader2 className="w-3 h-3 animate-spin" /> : <Eye className="w-3 h-3" />}
-                Unlock — ₹49
-              </button>
-            </div>
-          </div>
-        </div>
-      </Section>
-    </div>
-  );
+  // Free-first model — all content always visible, no paywall
+  return <Section title={title} badge="FREE">{children}</Section>;
 }
 
 // ── Sub-components ───────────────────────

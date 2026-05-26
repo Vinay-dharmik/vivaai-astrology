@@ -103,6 +103,37 @@ export function planetarySiderealLongitudes(
   return sidereal;
 }
 
+/**
+ * Detect retrograde status for each planet using ecliptic longitude velocity.
+ * A planet is retrograde when its apparent geocentric ecliptic longitude decreases.
+ * Sun and Moon are never retrograde. Rahu/Ketu are always retrograde (mean motion).
+ */
+export function detectRetrogrades(dateUtc: Date, Astro: any): Record<string, boolean> {
+  const RETRO_BODIES = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+  const result: Record<string, boolean> = {
+    Sun: false,
+    Moon: false,
+    Rahu: true,   // Rahu always moves retrograde
+    Ketu: true,   // Ketu always moves retrograde
+  };
+
+  // Check velocity by computing position 1 hour apart
+  const dt = 1 / 24; // 1 hour in days
+  const future = new Date(dateUtc.getTime() + dt * 86_400_000);
+
+  for (const body of RETRO_BODIES) {
+    const lon1 = eclipticLon(Astro.GeoVector(body, dateUtc, true), Astro);
+    const lon2 = eclipticLon(Astro.GeoVector(body, future, true), Astro);
+    // Handle wrap-around at 360°/0°
+    let diff = lon2 - lon1;
+    if (diff > 180) diff -= 360;
+    if (diff < -180) diff += 360;
+    result[body] = diff < 0;
+  }
+
+  return result;
+}
+
 // ── Ascendant ────────────────────────────────────────────
 
 export function calcAscendantSidereal(

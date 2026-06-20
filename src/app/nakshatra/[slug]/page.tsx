@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { seoMeta } from "@/lib/seo/metadata";
 import { NAKSHATRAS, NAK_LORDS } from "@/lib/astrology/constants";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 const NAK_DEITIES = ["Ashwini Kumaras","Yama","Agni","Brahma","Soma","Rudra","Aditi","Brihaspati","Nagas","Pitrs","Bhaga","Aryaman","Savitar","Tvashtar","Vayu","Indragni","Mitra","Indra","Nirriti","Apas","Vishvedeva","Vishnu","Vasu","Varuna","Ajaikapada","Ahirbudhnya","Pushan"];
 const NAK_SYMBOLS = ["Horse head","Yoni/Elephant","Razor/Flame","Chariot/Cart","Deer head","Teardrop/Diamond","Bow & Quiver","Flower/Circle","Coiled serpent","Palanquin","Front legs of bed","Back legs of bed","Hand/Fist","Bright jewel/Pearl","Coral/Sapphire","Triumphal arch","Lotus flower","Earring/Umbrella","Elephant tusk/Lion's tail","Elephant tusk/Fan","Drum/Bed","Ear/Trident","Drum","Empty circle/1000 flowers","Sword/Two-faced man","Twin serpent","Fish/Drum"];
@@ -77,8 +78,30 @@ export default async function NakshatraDetailPage({ params }: PageProps) {
   const rashi = ["Aries","Aries","Aries/Taurus","Taurus","Taurus/Gemini","Gemini","Gemini/Cancer","Cancer","Cancer","Leo","Leo","Leo/Virgo","Virgo","Virgo/Libra","Libra","Libra/Scorpio","Scorpio","Scorpio","Sagittarius","Sagittarius","Sagittarius/Capricorn","Capricorn","Capricorn/Aquarius","Aquarius","Aquarius/Pisces","Pisces","Pisces"][idx] || "";
   const desc = NAK_DESCRIPTIONS[name] || getDefaultDesc(name, lord, deity, gana);
 
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `${name} Nakshatra — Personality, Career & Compatibility`,
+    description: `${desc.personality.slice(0, 200)}`,
+    author: { "@type": "Organization", name: "VivaAI Astrology", url: "https://vivaai.in" },
+    publisher: { "@type": "Organization", name: "VivaAI Astrology", url: "https://vivaai.in" },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `https://vivaai.in/nakshatra/${slug}` },
+  };
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      { "@type": "Question", name: `Which planet rules ${name} Nakshatra?`, acceptedAnswer: { "@type": "Answer", text: `${name} Nakshatra is ruled by ${lord}, with ${deity} as its presiding deity.` } },
+      { "@type": "Question", name: `What careers suit ${name} Nakshatra natives?`, acceptedAnswer: { "@type": "Answer", text: desc.career } },
+      { "@type": "Question", name: `What is the Gana of ${name} Nakshatra?`, acceptedAnswer: { "@type": "Answer", text: `${name} belongs to the ${gana} Gana with ${animal} as its Yoni (animal symbol).` } },
+    ],
+  };
+
   return (
     <div className="section-container py-12 max-w-3xl mx-auto">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <Breadcrumb items={[{ label: "Nakshatra", href: "/nakshatra" }, { label: `${name} Nakshatra` }]} />
       <div className="text-center mb-8">
         <div className="text-4xl mb-2">⭐</div>
         <p className="text-xs text-gold-200 uppercase tracking-[0.2em] mb-1">Nakshatra #{idx + 1}</p>
@@ -116,9 +139,27 @@ export default async function NakshatraDetailPage({ params }: PageProps) {
         </div>
       </div>
 
+      {/* Compatibility cross-links — internal linking + high user intent */}
+      <div className="glass-card-bright p-5 mt-6">
+        <h2 className="text-sm font-semibold text-gold-200 mb-3">{name} Nakshatra Compatibility</h2>
+        <p className="text-xs text-[var(--text-muted)] mb-3">Check how {name} matches with other Nakshatras for marriage:</p>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+          {NAKSHATRAS.filter((n) => n !== name).slice(0, 6).map((other) => {
+            const otherSlug = other.toLowerCase().replace(/\s+/g, "-");
+            return (
+              <Link key={other} href={`/nakshatra-compatibility/${slug}-and-${otherSlug}`}
+                className="text-xs text-center py-2 px-2 bg-white/[0.02] rounded-lg text-[var(--text-secondary)] hover:text-gold-400 hover:bg-white/[0.04] transition">
+                {name} & {other}
+              </Link>
+            );
+          })}
+        </div>
+      </div>
+
       <div className="flex flex-wrap justify-center gap-3 mt-6">
         <Link href="/nakshatra" className="text-sm text-gold-400 hover:underline">← All Nakshatras</Link>
         <Link href="/kundali" className="gold-btn text-sm px-6 py-2">Find Your Nakshatra</Link>
+        <Link href="/nakshatra-compatibility" className="glass-card text-sm px-6 py-2 text-gold-200 hover:text-gold-400 transition">All Compatibility</Link>
       </div>
     </div>
   );

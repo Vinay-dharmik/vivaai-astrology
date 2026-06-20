@@ -51,19 +51,47 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
   if (!info) notFound();
 
   const today = new Date();
+  const isoDate = today.toISOString().split("T")[0];
   const dateStr = today.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const d = generateDailyHoroscope(sign, today);
   const detail = SIGN_DETAILS[sign] || "";
+  const cap = sign.charAt(0).toUpperCase() + sign.slice(1);
+
+  // Article schema with today's date drives freshness/repeat crawling
+  const articleJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "Article",
+    headline: `${cap} Horoscope Today — ${dateStr}`,
+    description: `Daily ${cap} horoscope predictions for love, career, health and finance. ${d.general}`,
+    datePublished: isoDate,
+    dateModified: isoDate,
+    author: { "@type": "Organization", name: "VivaAI Astrology", url: "https://vivaai.in" },
+    publisher: { "@type": "Organization", name: "VivaAI Astrology", url: "https://vivaai.in" },
+    mainEntityOfPage: { "@type": "WebPage", "@id": `https://vivaai.in/horoscope/${sign}` },
+  };
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      { "@type": "Question", name: `What is the ${cap} horoscope for today?`, acceptedAnswer: { "@type": "Answer", text: `${d.general} ${detail}` } },
+      { "@type": "Question", name: `What is the lucky number for ${cap} today?`, acceptedAnswer: { "@type": "Answer", text: `Today's lucky number for ${cap} is ${d.luckyNumber} and the lucky color is ${d.luckyColor}.` } },
+      { "@type": "Question", name: `Which planet rules ${cap}?`, acceptedAnswer: { "@type": "Answer", text: `${cap} is ruled by ${info.ruling}.` } },
+    ],
+  };
 
   return (
     <div className="section-container py-12 max-w-3xl mx-auto">
-      <Breadcrumb items={[{ label: "Horoscope", href: "/horoscope" }, { label: sign.charAt(0).toUpperCase() + sign.slice(1) }]} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(articleJsonLd) }} />
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <Breadcrumb items={[{ label: "Horoscope", href: "/horoscope" }, { label: cap }]} />
       <div className="text-center mb-8">
         <div className="text-5xl mb-3">{SYMBOLS[sign]}</div>
         <h1 className="font-sora font-extrabold text-3xl sm:text-4xl gold-text capitalize mb-2">
           {sign} Horoscope Today
         </h1>
-        <p className="text-sm text-[var(--text-muted)]">{dateStr} • {info.dates}</p>
+        <p className="text-sm text-[var(--text-muted)]">
+          <time dateTime={isoDate}>{dateStr}</time> • {info.dates}
+        </p>
       </div>
 
       <div className="glass-card-bright p-6 sm:p-8 mb-6 space-y-6">
@@ -113,7 +141,20 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
       <div className="flex flex-wrap justify-center gap-3">
         <Link href="/horoscope" className="text-sm text-gold-400 hover:underline">← All Signs</Link>
         <Link href="/kundali" className="gold-btn text-sm px-6 py-2">Get Full Kundali</Link>
-        <Link href="/matching" className="glass-card text-sm px-6 py-2 text-gold-200 hover:text-gold-400 transition">Check Compatibility</Link>
+        <Link href={`/compatibility/${sign}`} className="glass-card text-sm px-6 py-2 text-gold-200 hover:text-gold-400 transition">{cap} Compatibility</Link>
+      </div>
+
+      {/* Internal links to other signs — crawl depth + engagement */}
+      <div className="mt-10 border-t border-[var(--border)] pt-6">
+        <h2 className="text-sm font-semibold text-gold-200 mb-3">Today&apos;s Horoscope for Other Signs</h2>
+        <div className="grid grid-cols-3 sm:grid-cols-4 gap-2">
+          {Object.keys(SYMBOLS).filter((s) => s !== sign).map((s) => (
+            <Link key={s} href={`/horoscope/${s}`}
+              className="text-xs text-center py-2 px-2 bg-white/[0.02] rounded-lg text-[var(--text-secondary)] hover:text-gold-400 hover:bg-white/[0.04] transition capitalize">
+              {SYMBOLS[s]} {s}
+            </Link>
+          ))}
+        </div>
       </div>
     </div>
   );

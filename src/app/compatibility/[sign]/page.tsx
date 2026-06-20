@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import Link from "next/link";
 import { ZODIAC_INFO } from "@/lib/astrology/constants";
 import { seoMeta } from "@/lib/seo/metadata";
+import { Breadcrumb } from "@/components/ui/Breadcrumb";
 
 const SIGNS = Object.keys(ZODIAC_INFO);
 const SYMBOLS: Record<string, string> = {
@@ -75,8 +76,21 @@ export default async function SignCompatPage({ params }: PageProps) {
   if (!ZODIAC_INFO[sign]) notFound();
   const cap = (s: string) => s.charAt(0).toUpperCase() + s.slice(1);
 
+  // Best/worst matches for FAQ schema
+  const bestMatch = SIGNS.filter((o) => o !== sign).sort((a, b) => getScore(sign, b) - getScore(sign, a))[0];
+  const faqJsonLd = {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    mainEntity: [
+      { "@type": "Question", name: `Which sign is most compatible with ${cap(sign)}?`, acceptedAnswer: { "@type": "Answer", text: `${cap(sign)} is most compatible with ${cap(bestMatch)} (${getScore(sign, bestMatch)}% match), as both share complementary elemental energy.` } },
+      { "@type": "Question", name: `Who should ${cap(sign)} marry?`, acceptedAnswer: { "@type": "Answer", text: `For marriage, ${cap(sign)} pairs best with signs of compatible elements. For an accurate match based on birth charts, use Vedic Kundali matching rather than sun sign alone.` } },
+    ],
+  };
+
   return (
     <div className="section-container py-12 max-w-4xl mx-auto">
+      <script type="application/ld+json" dangerouslySetInnerHTML={{ __html: JSON.stringify(faqJsonLd) }} />
+      <Breadcrumb items={[{ label: "Compatibility", href: "/compatibility" }, { label: `${cap(sign)} Compatibility` }]} />
       <div className="text-center mb-10">
         <div className="text-5xl mb-3">{SYMBOLS[sign]}</div>
         <h1 className="font-sora font-extrabold text-3xl sm:text-4xl gold-text capitalize mb-2">

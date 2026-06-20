@@ -9,6 +9,11 @@ export const metadata = seoMeta({
   title: "Astrology Blog — 50+ Expert Vedic Astrology Articles & Guides",
   description: "Expert articles on Vedic astrology, Kundali, zodiac signs, planets, houses, doshas, numerology & more. Learn astrology from comprehensive, easy-to-understand guides.",
   path: "/blog",
+  keywords: [
+    "astrology blog", "vedic astrology articles", "kundali guide",
+    "zodiac sign guide", "astrology learning", "vedic astrology for beginners",
+    "jyotish articles", "horoscope articles", "astrology education",
+  ],
 });
 
 export default function BlogPage() {

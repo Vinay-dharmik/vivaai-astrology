@@ -38,7 +38,7 @@ export interface PlanetRow {
 }
 
 export interface DoshaSummary {
-  manglik: { status: boolean; severity: string; details: string };
+  manglik: { status: boolean; severity: string; details: string; isCancelled: boolean; cancellationReason: string };
   kaalSarp: { status: boolean; type: string; details: string };
   sadeSati: { status: boolean; phase: string; details: string };
 }
@@ -48,6 +48,9 @@ export interface YogaSummary {
   formed: boolean;
   planets: string;
   effect: string;
+  sanskrit?: string;
+  category?: "benefic" | "malefic" | "mixed";
+  strength?: "strong" | "moderate" | "weak";
 }
 
 export interface KundaliData {
@@ -69,6 +72,7 @@ export interface KundaliData {
   houses: { house: number; sign: string; signEnglish: string; lord: string; planets: string[] }[];
   doshas: DoshaSummary;
   yogas: YogaSummary[];
+  navamsa: { planet: string; navamsaSign: string; navamsaEnglish: string; navamsaLord: string; dignity: string }[];
   personality: string;
   career: string;
   marriage: string;
@@ -106,8 +110,10 @@ export function KundaliForm() {
     setResult(null);
 
     try {
+      // Dynamic imports for code splitting — heavy libs only load when needed
       const calc = await import("@/lib/astrology/calculations");
       const interp = await import("@/lib/astrology/interpretations");
+      const yogaEngine = await import("@/lib/astrology/yogas");
       const Astronomy = await import("astronomy-engine");
       const { NAKSHATRAS, RASHI } = await import("@/lib/astrology/constants");
 
@@ -116,15 +122,26 @@ export function KundaliForm() {
       const birthUtc = calc.zonedBirthToUtc(form.dob, hour24, minute, place.timezone);
       const ayanamsa = calc.lahiriAyanamsa(birthUtc);
       const sidereal = calc.planetarySiderealLongitudes(birthUtc, ayanamsa, Astronomy);
+
       const moonInfo = calc.getRashiInfo(sidereal.Moon);
       const sunInfo = calc.getRashiInfo(sidereal.Sun);
       const nakInfo = calc.getNakshatraInfo(sidereal.Moon);
       const lagnaSid = calc.calcAscendantSidereal(birthUtc, place.latitude, place.longitude, ayanamsa, Astronomy);
       const lagnaInfo = calc.getRashiInfo(lagnaSid);
       const ageYears = calc.getAgeYears(form.dob);
-      const dasha = calc.getVimshottariSummary(nakInfo.lord, ageYears);
 
-      // Build detailed planet rows with real retrograde detection
+      // ── Detailed Vimshottari Dasha (proper antardasha) ──
+      const detailedDasha = calc.getDetailedVimshottari(nakInfo.lord, ageYears);
+      const dasha = {
+        current: detailedDasha.mahaLord,
+        currentRange: detailedDasha.mahaRange,
+        next: detailedDasha.nextMahaLord,
+        nextStartsAt: detailedDasha.nextMahaStartAge,
+        remaining: detailedDasha.mahaRemaining,
+        antardasha: detailedDasha.antarLord,
+      };
+
+      // ── Planet rows with full dignity + retrograde ──
       const basicRows = calc.buildPlanetRows(sidereal, lagnaInfo.signIndex);
       const retrogrades = calc.detectRetrogrades(birthUtc, Astronomy);
       const planets: PlanetRow[] = basicRows.map((r) => {
@@ -136,134 +153,135 @@ export function KundaliForm() {
           nakshatraPada: nak.pada,
           isRetrograde: retrogrades[r.body] ?? false,
           signDegree: rashiInfo.signDegree,
-          dignity: getDignity(r.body, rashiInfo.english),
+          dignity: calc.getPlanetDignity(r.body, rashiInfo.english),
         };
       });
 
-      // Build houses
-      const houses = Array.from({ length: 12 }, (_, i) => {
+      // ── Houses ──
+      const housesArr = Array.from({ length: 12 }, (_, i) => {
         const sIdx = (lagnaInfo.signIndex + i) % 12;
         const sign = RASHI[sIdx];
         const planetsInHouse = planets.filter((p) => p.house === i + 1).map((p) => p.body);
         return { house: i + 1, sign: sign.name, signEnglish: sign.english, lord: sign.lord, planets: planetsInHouse };
       });
 
-      // Doshas
-      const marsHouse = planets.find((p) => p.body === "Mars")?.house ?? 0;
-      const satHouse = planets.find((p) => p.body === "Saturn")?.house ?? 0;
-      const rahuHouse = planets.find((p) => p.body === "Rahu")?.house ?? 0;
-      const ketuHouse = planets.find((p) => p.body === "Ketu")?.house ?? 0;
+      // ── PlanetMap for yoga engine ──
+      type PlanetMap = Record<string, { house: number; signIndex: number; isRetrograde: boolean; dignity: string }>;
+      const planetMap: PlanetMap = {};
+      for (const p of planets) {
+        planetMap[p.body] = { house: p.house, signIndex: p.signIndex, isRetrograde: p.isRetrograde, dignity: p.dignity };
+      }
 
-      const manglikHouses = [1, 2, 4, 7, 8, 12];
-      const isManglik = manglikHouses.includes(marsHouse);
-      const manglikSeverity = [1, 7, 8].includes(marsHouse) ? "High" : isManglik ? "Moderate" : "None";
+      // ── HouseMap for yoga engine ──
+      type HouseMap = Record<number, { lord: string; signIndex: number; planets: string[] }>;
+      const houseMap: HouseMap = {};
+      for (const h of housesArr) {
+        houseMap[h.house] = { lord: h.lord, signIndex: (lagnaInfo.signIndex + h.house - 1) % 12, planets: h.planets };
+      }
 
-      // Kaal Sarp: all planets between Rahu-Ketu axis
-      const rahuIdx = planets.find((p) => p.body === "Rahu")?.signIndex ?? 0;
-      const ketuIdx = planets.find((p) => p.body === "Ketu")?.signIndex ?? 0;
-      const otherPlanets = planets.filter((p) => p.body !== "Rahu" && p.body !== "Ketu");
-      const allBetween = otherPlanets.every((p) => {
-        const d = (p.signIndex - rahuIdx + 12) % 12;
-        const span = (ketuIdx - rahuIdx + 12) % 12;
-        return d <= span;
-      });
-      const isKaalSarp = allBetween && rahuIdx !== ketuIdx;
+      // ── All 23 yogas with full analysis ──
+      const allYogasRaw = yogaEngine.detectAllYogas(planetMap, houseMap);
+      const yogas: YogaSummary[] = allYogasRaw.map((y) => ({
+        name: y.name,
+        formed: y.formed,
+        planets: y.planets,
+        effect: y.effect,
+        sanskrit: y.sanskrit,
+        category: y.category,
+        strength: y.strength,
+      }));
 
-      // Sade Sati: Saturn in 12th, 1st, or 2nd from Moon sign
+      // ── Enhanced Manglik analysis with cancellation ──
+      const manglikResult = yogaEngine.analyzeManglik(planetMap, houseMap);
+      // ── Kaal Sarp with type detection ──
+      const kaalSarpResult = yogaEngine.analyzeKaalSarp(planetMap);
+
+      // ── Sade Sati ──
       const moonIdx = moonInfo.signIndex;
       const satIdx = planets.find((p) => p.body === "Saturn")?.signIndex ?? 0;
-      const satFromMoon = ((satIdx - moonIdx + 12) % 12);
+      const satFromMoon = (satIdx - moonIdx + 12) % 12;
       const isSadeSati = [0, 1, 11].includes(satFromMoon);
       const sadeSatiPhase = satFromMoon === 11 ? "Rising (1st phase)" : satFromMoon === 0 ? "Peak (2nd phase)" : satFromMoon === 1 ? "Setting (3rd phase)" : "Not active";
+      const rahuH = planets.find((p) => p.body === "Rahu")?.house ?? 0;
+      const ketuH = planets.find((p) => p.body === "Ketu")?.house ?? 0;
 
       const doshas: DoshaSummary = {
-        manglik: { status: isManglik, severity: manglikSeverity, details: isManglik ? `Mars in ${marsHouse}th house creates Manglik Dosha. ${manglikSeverity} severity.` : "No Manglik Dosha. Mars is well-placed for relationships." },
-        kaalSarp: { status: isKaalSarp, type: isKaalSarp ? `Rahu in ${rahuHouse}th, Ketu in ${ketuHouse}th house` : "", details: isKaalSarp ? "All planets confined between Rahu-Ketu axis. May cause delays and karmic lessons." : "No Kaal Sarp Dosha. Planetary spread is balanced." },
-        sadeSati: { status: isSadeSati, phase: sadeSatiPhase, details: isSadeSati ? `Saturn transiting near Moon sign. Phase: ${sadeSatiPhase}. Patience and discipline needed.` : "Sade Sati not active currently. Saturn's influence is normal." },
+        manglik: {
+          status: manglikResult.isManglik,
+          severity: manglikResult.severity,
+          details: manglikResult.details,
+          isCancelled: manglikResult.isCancelled,
+          cancellationReason: manglikResult.cancellationReason,
+        },
+        kaalSarp: {
+          status: kaalSarpResult.isPresent,
+          type: kaalSarpResult.type || (kaalSarpResult.isPresent ? `Rahu in ${rahuH}th, Ketu in ${ketuH}th house` : ""),
+          details: kaalSarpResult.details,
+        },
+        sadeSati: {
+          status: isSadeSati,
+          phase: sadeSatiPhase,
+          details: isSadeSati
+            ? `Saturn transiting near Moon sign. Phase: ${sadeSatiPhase}. Patience and discipline are essential. Duration: typically 2.5 years per phase.`
+            : "Sade Sati not active. Saturn's influence on Moon sign is currently normal.",
+        },
       };
 
-      // Yogas
-      const yogas: YogaSummary[] = [];
-      const jupH = planets.find((p) => p.body === "Jupiter")?.house ?? 0;
-      const venH = planets.find((p) => p.body === "Venus")?.house ?? 0;
-      const sunH = planets.find((p) => p.body === "Sun")?.house ?? 0;
-      const merH = planets.find((p) => p.body === "Mercury")?.house ?? 0;
+      // ── Navamsa (D9) chart ──
+      const navamsaRaw = calc.calcNavamsa(sidereal);
+      const navamsa = navamsaRaw.map((n) => ({
+        planet: n.planet,
+        navamsaSign: n.navamsaSign,
+        navamsaEnglish: n.navamsaEnglish,
+        navamsaLord: n.navamsaLord,
+        dignity: n.dignity,
+      }));
 
-      // Gajakesari Yoga
-      const jupFromMoon = ((jupH - (planets.find((p) => p.body === "Moon")?.house ?? 1) + 12) % 12) + 1;
-      if ([1, 4, 7, 10].includes(jupFromMoon)) {
-        yogas.push({ name: "Gajakesari Yoga", formed: true, planets: "Jupiter + Moon", effect: "Intelligence, fame, prosperity. Native earns respect and holds good position." });
-      }
-      // Budha-Aditya Yoga
-      if (sunH === merH) {
-        yogas.push({ name: "Budhaditya Yoga", formed: true, planets: "Sun + Mercury", effect: "Sharp intellect, good speech, success in education and communication." });
-      }
-      // Lakshmi Yoga
-      if ([1, 5, 9].includes(venH) && [1, 4, 7, 10].includes(jupH)) {
-        yogas.push({ name: "Lakshmi Yoga", formed: true, planets: "Venus + Jupiter", effect: "Wealth, luxury, happy married life. Native enjoys material comforts." });
-      }
-      // Raja Yoga (simplified)
-      const kendras = [1, 4, 7, 10];
-      const trikonas = [1, 5, 9];
-      const kendraLords = kendras.map((h) => houses[h - 1].lord);
-      const trikonaLords = trikonas.map((h) => houses[h - 1].lord);
-      const commonLords = kendraLords.filter((l) => trikonaLords.includes(l));
-      if (commonLords.length > 0) {
-        yogas.push({ name: "Raja Yoga", formed: true, planets: commonLords.join(", "), effect: "Power, authority, success in profession. Native rises to high position." });
-      }
-
-      if (yogas.length === 0) {
-        yogas.push({ name: "No major yoga", formed: false, planets: "-", effect: "Standard planetary placement. Success comes through persistent effort." });
-      }
-
-      // Nakshatra details
+      // ── Nakshatra details ──
       const NAK_DEITIES = ["Ashwini Kumaras","Yama","Agni","Brahma","Soma","Rudra","Aditi","Brihaspati","Nagas","Pitrs","Bhaga","Aryaman","Savitar","Tvashtar","Vayu","Indragni","Mitra","Indra","Nirriti","Apas","Vishvedeva","Vishnu","Vasu","Varuna","Ajaikapada","Ahirbudhnya","Pushan"];
-      const NAK_GANAS = ["Deva","Manushya","Rakshasa","Deva","Deva","Manushya","Deva","Deva","Rakshasa","Rakshasa","Manushya","Deva","Deva","Rakshasa","Deva","Rakshasa","Deva","Rakshasa","Rakshasa","Manushya","Manushya","Deva","Rakshasa","Rakshasa","Manushya","Deva","Deva"];
+      const NAK_GANAS = ["Deva","Manushya","Rakshasa","Deva","Deva","Manushya","Deva","Deva","Rakshasa","Rakshasa","Manushya","Manushya","Deva","Rakshasa","Deva","Rakshasa","Deva","Rakshasa","Rakshasa","Manushya","Manushya","Deva","Rakshasa","Rakshasa","Manushya","Deva","Deva"];
       const NAK_NADIS = ["Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya","Aadi","Madhya","Antya"];
       const NAK_YONIS = ["Horse","Elephant","Sheep","Serpent","Serpent","Dog","Cat","Ram","Cat","Rat","Rat","Cow","Buffalo","Tiger","Buffalo","Tiger","Deer","Deer","Dog","Monkey","Mongoose","Monkey","Lion","Horse","Lion","Cow","Elephant"];
 
-      // Enhanced Dasha
-      const dashaRemaining = parseFloat(dasha.nextStartsAt) - ageYears;
-      const antardashaLord = getAntardasha(dasha.current, ageYears);
-
-      // Detailed interpretations
+      // ── Chart-specific predictions (new engine) ──
       const personality = interp.describeTemperament(lagnaInfo, moonInfo, nakInfo, planets);
-      const analysis = interp.getPositivesAndChallenges(lagnaInfo, moonInfo, planets);
-      const marriageEst = interp.estimateMarriageWindow(ageYears, dasha, planets);
-      const timeline = interp.buildLifeTimeline(dasha, planets);
-      const remedyList = interp.buildRemedies(lagnaInfo, nakInfo.name, dasha);
+      const career = interp.predictCareer(lagnaInfo, planets, housesArr);
+      const finance = interp.predictFinance(planets, housesArr);
+      const health = interp.predictHealth(lagnaInfo, planets, housesArr);
+      const spiritual = interp.predictSpiritual(planets, housesArr);
+      const marriage = interp.predictMarriage(ageYears, planets, housesArr, navamsa);
 
-      // Career prediction
-      const tenthLord = houses[9].lord;
-      const careerText = `10th house in ${houses[9].sign} (${houses[9].signEnglish}) ruled by ${tenthLord}. ${getCareerPrediction(tenthLord, planets)}`;
+      const analysis = interp.getPositivesAndChallenges(lagnaInfo, moonInfo, planets, housesArr);
+      const remedyList = interp.buildRemedies(lagnaInfo, nakInfo.name, { current: dasha.current, currentRange: dasha.currentRange, next: dasha.next, nextStartsAt: dasha.nextStartsAt }, planets);
 
-      // Finance prediction
-      const secondLord = houses[1].lord;
-      const eleventhLord = houses[10].lord;
-      const financeText = `2nd house lord ${secondLord} and 11th house lord ${eleventhLord} determine wealth. ${getFinancePrediction(secondLord, eleventhLord, planets)}`;
+      // ── Lucky gems (Lagna lord + Moon lord + Dasha lord) ──
+      const gemMap: Record<string, { name: string; finger: string }> = {
+        Sun: { name: "Ruby (Manik)", finger: "Ring finger, Sunday morning" },
+        Moon: { name: "Pearl (Moti)", finger: "Little finger, Monday morning" },
+        Mars: { name: "Red Coral (Moonga)", finger: "Ring finger, Tuesday morning" },
+        Mercury: { name: "Emerald (Panna)", finger: "Little finger, Wednesday morning" },
+        Jupiter: { name: "Yellow Sapphire (Pukhraj)", finger: "Index finger, Thursday morning" },
+        Venus: { name: "Diamond (Heera) / White Sapphire", finger: "Middle finger, Friday morning" },
+        Saturn: { name: "Blue Sapphire (Neelam)", finger: "Middle finger, Saturday morning" },
+        Rahu: { name: "Hessonite (Gomed)", finger: "Middle finger, Saturday" },
+        Ketu: { name: "Cat's Eye (Lahsunia)", finger: "Little finger, Thursday" },
+      };
+      const gemPlanets = [...new Set([lagnaInfo.lord, moonInfo.lord, dasha.current])].filter((p) => gemMap[p]);
+      const luckyGems = gemPlanets.map((p) => ({ ...(gemMap[p] || { name: "Consult astrologer", finger: "-" }), planet: p }));
 
-      // Health prediction
-      const sixthLord = houses[5].lord;
-      const healthText = `6th house in ${houses[5].sign} (${houses[5].signEnglish}). ${getHealthPrediction(lagnaInfo.element, sixthLord)}`;
+      // ── Lucky numbers from Lagna + Moon + Nakshatra ──
+      const lagnaNum = lagnaInfo.signIndex + 1;
+      const moonNum = (moonInfo.signIndex % 9) + 1;
+      const nakNum = (nakInfo.index % 9) + 1;
+      const luckyNumbers = [...new Set([lagnaNum, moonNum, nakNum])];
 
-      // Spiritual
-      const ninthLord = houses[8].lord;
-      const spiritualText = `9th house of dharma ruled by ${ninthLord}. ${getSpiritualPrediction(ninthLord, jupH)}`;
-
-      // Marriage detailed
-      const seventhLord = houses[6].lord;
-      const marriageText = `7th house in ${houses[6].sign} (${houses[6].signEnglish}) ruled by ${seventhLord}. ${marriageEst.signals.join(" ")} Primary window: ${marriageEst.primary}.`;
-
-      // Lucky gems
-      const luckyGems = [lagnaInfo.lord, moonInfo.lord].filter((v, i, a) => a.indexOf(v) === i).map((p) => {
-        const gems: Record<string, { name: string; finger: string }> = {
-          Sun: { name: "Ruby (Manik)", finger: "Ring finger" }, Moon: { name: "Pearl (Moti)", finger: "Little finger" },
-          Mars: { name: "Red Coral (Moonga)", finger: "Ring finger" }, Mercury: { name: "Emerald (Panna)", finger: "Little finger" },
-          Jupiter: { name: "Yellow Sapphire (Pukhraj)", finger: "Index finger" }, Venus: { name: "Diamond (Heera)", finger: "Middle finger" },
-          Saturn: { name: "Blue Sapphire (Neelam)", finger: "Middle finger" },
-        };
-        return { ...(gems[p] || { name: "Consult astrologer", finger: "-" }), planet: p };
-      });
+      // ── Lucky colors from Lagna element ──
+      const colorMap: Record<string, string[]> = {
+        Fire: ["Red", "Orange", "Gold", "Copper"],
+        Earth: ["Green", "Brown", "White", "Cream"],
+        Air: ["Blue", "Light Green", "Purple", "Sky Blue"],
+        Water: ["Silver", "White", "Sea Green", "Pale Blue"],
+      };
 
       setResult({
         name: form.name, gender: form.gender, dob: form.dob,
@@ -279,17 +297,16 @@ export function KundaliForm() {
           nadi: NAK_NADIS[nakInfo.index] || "-",
           yoni: NAK_YONIS[nakInfo.index] || "-",
         },
-        ayanamsa,
-        dasha: { ...dasha, remaining: `${Math.max(0, dashaRemaining).toFixed(1)} years`, antardasha: antardashaLord },
-        planets, houses, doshas, yogas,
-        personality, career: careerText, marriage: marriageText, health: healthText, finance: financeText, spiritual: spiritualText,
+        ayanamsa, dasha,
+        planets, houses: housesArr, doshas, yogas, navamsa,
+        personality, career, marriage, health, finance, spiritual,
         positives: analysis.positives,
         challenges: analysis.challenges,
         remedies: remedyList,
         luckyGems,
-        luckyNumbers: [(lagnaInfo.signIndex + 1), (moonInfo.signIndex + 1) % 9 + 1, (nakInfo.index % 9) + 1],
-        luckyColors: lagnaInfo.element === "Fire" ? ["Red", "Orange", "Gold"] : lagnaInfo.element === "Earth" ? ["Green", "Brown", "White"] : lagnaInfo.element === "Air" ? ["Blue", "Light Green", "Purple"] : ["Silver", "White", "Sea Green"],
-        luckyDay: { Sun: "Sunday", Moon: "Monday", Mars: "Tuesday", Mercury: "Wednesday", Jupiter: "Thursday", Venus: "Friday", Saturn: "Saturday" }[lagnaInfo.lord] || "Monday",
+        luckyNumbers,
+        luckyColors: colorMap[lagnaInfo.element] || ["Gold", "White", "Blue"],
+        luckyDay: ({ Sun: "Sunday", Moon: "Monday", Mars: "Tuesday", Mercury: "Wednesday", Jupiter: "Thursday", Venus: "Friday", Saturn: "Saturday" } as Record<string, string>)[lagnaInfo.lord] || "Monday",
       });
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : "Failed to generate Kundali. Please check your inputs.");
@@ -355,96 +372,7 @@ export function KundaliForm() {
   );
 }
 
-// ── Helpers ──────────────────────────────
-
-function getDignity(body: string, signEnglish: string): string {
-  const exalted: Record<string, string> = { Sun: "Aries", Moon: "Taurus", Mars: "Capricorn", Mercury: "Virgo", Jupiter: "Cancer", Venus: "Pisces", Saturn: "Libra" };
-  const debilitated: Record<string, string> = { Sun: "Libra", Moon: "Scorpio", Mars: "Cancer", Mercury: "Pisces", Jupiter: "Capricorn", Venus: "Virgo", Saturn: "Aries" };
-  const own: Record<string, string[]> = { Sun: ["Leo"], Moon: ["Cancer"], Mars: ["Aries", "Scorpio"], Mercury: ["Gemini", "Virgo"], Jupiter: ["Sagittarius", "Pisces"], Venus: ["Taurus", "Libra"], Saturn: ["Capricorn", "Aquarius"] };
-  if (exalted[body] === signEnglish) return "Exalted ⬆";
-  if (debilitated[body] === signEnglish) return "Debilitated ⬇";
-  if (own[body]?.includes(signEnglish)) return "Own Sign ★";
-  return "Normal";
-}
-
-function getAntardasha(mahadasha: string, age: number): string {
-  const VIM_ORDER = ["Ketu", "Venus", "Sun", "Moon", "Mars", "Rahu", "Jupiter", "Saturn", "Mercury"];
-  const idx = VIM_ORDER.indexOf(mahadasha);
-  const frac = age % 7;
-  const sub = Math.floor((frac / 7) * 9);
-  return VIM_ORDER[(idx + sub) % 9];
-}
-
-function getCareerPrediction(tenthLord: string, planets: PlanetRow[]): string {
-  const merH = planets.find((p) => p.body === "Mercury")?.house ?? 0;
-  const jupH = planets.find((p) => p.body === "Jupiter")?.house ?? 0;
-  const satH = planets.find((p) => p.body === "Saturn")?.house ?? 0;
-  const sunH = planets.find((p) => p.body === "Sun")?.house ?? 0;
-  const marsH = planets.find((p) => p.body === "Mars")?.house ?? 0;
-
-  // Primary career domains based on 10th house lord
-  const primary: Record<string, string> = {
-    Sun: "Government, administration, politics, or leadership roles in large organizations. Public sector, IAS/IPS, corporate leadership.",
-    Moon: "Healthcare, hospitality, food industry, shipping, travel & tourism, nursing, psychology, or public relations.",
-    Mars: "Engineering, defense, police, surgery, construction, real estate, sports, or competitive fields.",
-    Mercury: "Information technology, data analytics, accounting, journalism, writing, teaching, e-commerce, or digital marketing.",
-    Jupiter: "Education, law, finance, banking, consulting, religious organizations, or advisory roles.",
-    Venus: "Arts, entertainment, media, fashion, beauty, interior design, luxury brands, or creative agencies.",
-    Saturn: "Mining, agriculture, manufacturing, government jobs, judiciary, research, or infrastructure development.",
-  };
-
-  let text = primary[tenthLord] || "Versatile career path — success through specialized expertise.";
-
-  // Mercury influence — communication & tech boost
-  if ([1, 2, 5, 10, 11].includes(merH)) {
-    text += " Strong Mercury supports tech, communication, and business acumen.";
-  }
-  // Jupiter influence — wisdom & growth
-  if ([1, 5, 9, 10, 11].includes(jupH)) {
-    text += " Jupiter's favorable placement brings mentorship, promotions, and professional respect.";
-  }
-  // Saturn influence — discipline & persistence
-  if ([3, 6, 10, 11].includes(satH)) {
-    text += " Saturn rewards discipline — expect steady rise after age 30.";
-  }
-  // Sun in kendra — leadership potential
-  if ([1, 4, 7, 10].includes(sunH)) {
-    text += " Sun in angular house enhances authority and decision-making power.";
-  }
-  // Mars in upachaya — competitive advantage
-  if ([3, 6, 10, 11].includes(marsH)) {
-    text += " Mars in growth house gives competitive edge and entrepreneurial drive.";
-  }
-
-  return text;
-}
-
-function getFinancePrediction(secondLord: string, eleventhLord: string, planets: PlanetRow[]): string {
-  const jupH = planets.find((p) => p.body === "Jupiter")?.house ?? 0;
-  const venH = planets.find((p) => p.body === "Venus")?.house ?? 0;
-  let text = `Wealth accumulation is influenced by ${secondLord} and ${eleventhLord}. `;
-  if ([2, 5, 9, 11].includes(jupH)) text += "Jupiter supports financial growth and wise investments. ";
-  if ([2, 4, 11].includes(venH)) text += "Venus brings luxury and comfortable lifestyle. ";
-  text += "Build savings discipline from an early age for long-term security.";
-  return text;
-}
-
-function getHealthPrediction(element: string, sixthLord: string): string {
-  const elementHealth: Record<string, string> = {
-    Fire: "Watch for inflammation, fever, and blood pressure issues. Regular exercise and cooling foods help maintain balance.",
-    Earth: "Digestive health and weight management need attention. Structured diet and moderate exercise are essential.",
-    Air: "Nervous system and respiratory health require care. Meditation and breathing exercises bring balance.",
-    Water: "Emotional health and water retention may be concerns. Emotional stability and regular hydration are important.",
-  };
-  return elementHealth[element] || "Maintain regular health checkups and balanced lifestyle for optimal well-being.";
-}
-
-function getSpiritualPrediction(ninthLord: string, jupiterHouse: number): string {
-  let text = `${ninthLord} as 9th lord guides your spiritual path. `;
-  if ([1, 5, 9].includes(jupiterHouse)) text += "Jupiter's placement strongly supports spiritual growth, pilgrimage, and higher learning. ";
-  text += "Regular prayer, meditation, and selfless service accelerate spiritual evolution.";
-  return text;
-}
+// ── Form sub-components ───────────────────────────────────
 
 function InputField({ label, value, onChange, placeholder, type = "text" }: {
   label: string; value: string; onChange: (v: string) => void; placeholder?: string; type?: string;

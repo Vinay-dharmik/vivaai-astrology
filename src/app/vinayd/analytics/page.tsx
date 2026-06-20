@@ -3,116 +3,108 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect } from "react";
-import { BarChart3, TrendingUp, Eye, Users, Globe, Clock, Smartphone, Monitor, ArrowUpRight } from "lucide-react";
+import { BarChart3, Globe, Search, DollarSign, ExternalLink, Info, TrendingUp } from "lucide-react";
 
+/**
+ * Traffic analytics live in Google's tools (GA4 + Search Console + AdSense).
+ * There is no on-site database to store page views, so rather than show
+ * fabricated numbers, this page deep-links to the real dashboards.
+ */
 export default function AdminAnalyticsPage() {
-  const { data: session, status } = useSession();
+  const { status } = useSession();
   const router = useRouter();
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/vinayd/login");
   }, [status, router]);
 
-  if (status === "loading" || !session) return <div className="flex items-center justify-center h-64"><div className="animate-pulse text-gold-400">Loading...</div></div>;
+  if (status === "loading") {
+    return <div className="flex items-center justify-center h-64"><div className="animate-pulse text-gold-400">Loading…</div></div>;
+  }
 
-  const trafficSources = [
-    { source: "Google Organic", sessions: "5,231", pct: "62%", color: "bg-blue-400" },
-    { source: "Direct", sessions: "1,847", pct: "22%", color: "bg-emerald-400" },
-    { source: "WhatsApp Referral", sessions: "723", pct: "9%", color: "bg-green-400" },
-    { source: "Social Media", sessions: "412", pct: "5%", color: "bg-purple-400" },
-    { source: "Other", sessions: "219", pct: "2%", color: "bg-gray-400" },
-  ];
-
-  const topCountries = [
-    { country: "🇮🇳 India", sessions: "7,124", pct: "84%" },
-    { country: "🇺🇸 United States", sessions: "543", pct: "6%" },
-    { country: "🇬🇧 United Kingdom", sessions: "312", pct: "4%" },
-    { country: "🇨🇦 Canada", sessions: "187", pct: "2%" },
-    { country: "🇦🇺 Australia", sessions: "134", pct: "2%" },
-    { country: "🇳🇵 Nepal", sessions: "98", pct: "1%" },
+  const tools = [
+    {
+      icon: BarChart3, color: "bg-orange-500/20 text-orange-400",
+      name: "Google Analytics 4", desc: "Live visitors, page views, traffic sources, devices, countries, engagement.",
+      links: [
+        { label: "Realtime", href: "https://analytics.google.com/analytics/web/#/p0/realtime/overview" },
+        { label: "Reports", href: "https://analytics.google.com" },
+      ],
+    },
+    {
+      icon: Search, color: "bg-cyan-500/20 text-cyan-400",
+      name: "Search Console", desc: "Search impressions, clicks, average position, indexed pages, query data.",
+      links: [
+        { label: "Performance", href: "https://search.google.com/search-console/performance/search-analytics" },
+        { label: "Index Coverage", href: "https://search.google.com/search-console/index" },
+        { label: "Sitemaps", href: "https://search.google.com/search-console/sitemaps" },
+      ],
+    },
+    {
+      icon: DollarSign, color: "bg-gold-400/20 text-gold-400",
+      name: "Google AdSense", desc: "Ad revenue, RPM, page views, impressions, CTR, and policy status.",
+      links: [
+        { label: "Home", href: "https://www.google.com/adsense" },
+        { label: "Reports", href: "https://www.google.com/adsense/new/u/0/pub/main/reports" },
+      ],
+    },
+    {
+      icon: TrendingUp, color: "bg-purple-500/20 text-purple-400",
+      name: "PageSpeed Insights", desc: "Core Web Vitals (LCP, CLS, INP) — directly affects SEO ranking.",
+      links: [
+        { label: "Test vivaai.in", href: "https://pagespeed.web.dev/analysis?url=https://vivaai.in" },
+      ],
+    },
   ];
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="font-sora font-bold text-2xl text-white">Analytics</h1>
-        <p className="text-sm text-gray-500 mt-1">Traffic insights and user behavior analysis.</p>
+        <p className="text-sm text-gray-500 mt-1">Your real traffic data lives in Google&apos;s tools — open them directly below.</p>
       </div>
 
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
-        {[
-          { icon: Eye, label: "Page Views", value: "42,891", change: "+23%", color: "bg-blue-500/20 text-blue-400" },
-          { icon: Users, label: "Unique Visitors", value: "18,432", change: "+15%", color: "bg-emerald-500/20 text-emerald-400" },
-          { icon: Clock, label: "Avg. Session", value: "3m 24s", change: "+8%", color: "bg-purple-500/20 text-purple-400" },
-          { icon: TrendingUp, label: "Bounce Rate", value: "32%", change: "-3%", color: "bg-gold-400/20 text-gold-400" },
-        ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-white/10 p-5" style={{ background: "rgba(15,15,30,0.8)" }}>
-            <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${s.color} mb-3`}>
-              <s.icon className="w-4.5 h-4.5" />
+      <div className="rounded-xl border border-blue-400/30 bg-blue-400/5 p-4 flex items-start gap-3">
+        <Info className="w-5 h-5 text-blue-400 shrink-0 mt-0.5" />
+        <div className="text-xs text-gray-300 leading-relaxed">
+          <p className="font-medium text-blue-300 mb-1">Why no numbers here?</p>
+          This site has no database, so page-view data isn&apos;t stored on-site. GA4 already tracks every visit (the tag is live in your layout). For accurate, real-time numbers, use the official dashboards — they&apos;re the source of truth and free.
+        </div>
+      </div>
+
+      <div className="grid sm:grid-cols-2 gap-4">
+        {tools.map((t) => (
+          <div key={t.name} className="rounded-xl border border-white/10 p-5" style={{ background: "rgba(15,15,30,0.8)" }}>
+            <div className="flex items-center gap-3 mb-2">
+              <div className={`w-9 h-9 rounded-lg flex items-center justify-center ${t.color}`}>
+                <t.icon className="w-4.5 h-4.5" />
+              </div>
+              <h2 className="font-sora font-semibold text-sm text-white">{t.name}</h2>
             </div>
-            <p className="text-2xl font-bold text-white font-sora">{s.value}</p>
-            <div className="flex items-center justify-between mt-1">
-              <p className="text-xs text-gray-500">{s.label}</p>
-              <span className="text-xs text-emerald-400 flex items-center gap-0.5"><ArrowUpRight className="w-3 h-3" />{s.change}</span>
+            <p className="text-xs text-gray-400 mb-3 leading-relaxed">{t.desc}</p>
+            <div className="flex flex-wrap gap-2">
+              {t.links.map((l) => (
+                <a key={l.href} href={l.href} target="_blank" rel="noopener noreferrer"
+                  className="text-xs px-3 py-1.5 rounded-lg bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white transition flex items-center gap-1.5">
+                  {l.label} <ExternalLink className="w-3 h-3" />
+                </a>
+              ))}
             </div>
           </div>
         ))}
       </div>
 
-      <div className="grid lg:grid-cols-2 gap-6">
-        {/* Traffic Sources */}
-        <div>
-          <h2 className="font-sora font-semibold text-sm text-white mb-3">Traffic Sources</h2>
-          <div className="rounded-xl border border-white/10 p-5 space-y-4" style={{ background: "rgba(15,15,30,0.8)" }}>
-            {trafficSources.map((t) => (
-              <div key={t.source}>
-                <div className="flex justify-between text-xs mb-1.5">
-                  <span className="text-gray-300">{t.source}</span>
-                  <span className="text-gray-500">{t.sessions} ({t.pct})</span>
-                </div>
-                <div className="h-2 bg-white/5 rounded-full overflow-hidden">
-                  <div className={`h-full ${t.color} rounded-full`} style={{ width: t.pct }} />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Countries */}
-        <div>
-          <h2 className="font-sora font-semibold text-sm text-white mb-3">Top Countries</h2>
-          <div className="rounded-xl border border-white/10 overflow-hidden" style={{ background: "rgba(15,15,30,0.8)" }}>
-            <table className="w-full text-sm">
-              <tbody>
-                {topCountries.map((c) => (
-                  <tr key={c.country} className="border-b border-white/5">
-                    <td className="p-3 text-white">{c.country}</td>
-                    <td className="p-3 text-right text-gray-400">{c.sessions}</td>
-                    <td className="p-3 text-right text-gray-500 w-16">{c.pct}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-      </div>
-
-      {/* Device Breakdown */}
-      <div>
-        <h2 className="font-sora font-semibold text-sm text-white mb-3">Device Breakdown</h2>
-        <div className="grid grid-cols-3 gap-3">
-          {[
-            { icon: Smartphone, label: "Mobile", value: "72%", sessions: "13,271" },
-            { icon: Monitor, label: "Desktop", value: "24%", sessions: "4,424" },
-            { icon: Monitor, label: "Tablet", value: "4%", sessions: "737" },
-          ].map(d => (
-            <div key={d.label} className="rounded-xl border border-white/10 p-4 text-center" style={{ background: "rgba(15,15,30,0.8)" }}>
-              <d.icon className="w-6 h-6 text-gold-400 mx-auto mb-2" />
-              <p className="text-xl font-bold text-white font-sora">{d.value}</p>
-              <p className="text-xs text-gray-500">{d.label} • {d.sessions}</p>
-            </div>
-          ))}
-        </div>
+      {/* SEO quick checklist */}
+      <div className="rounded-xl border border-white/10 p-5" style={{ background: "rgba(15,15,30,0.8)" }}>
+        <h2 className="font-sora font-semibold text-sm text-white mb-3 flex items-center gap-2">
+          <Globe className="w-4 h-4 text-gold-400" /> Weekly SEO Routine
+        </h2>
+        <ul className="space-y-2 text-xs text-gray-400">
+          <li className="flex gap-2"><span className="text-gold-400">1.</span> Search Console → Performance: note which queries are gaining impressions, write a blog post targeting the top one.</li>
+          <li className="flex gap-2"><span className="text-gold-400">2.</span> Index Coverage: confirm new pages are indexed; request indexing for any &quot;Discovered – not indexed&quot;.</li>
+          <li className="flex gap-2"><span className="text-gold-400">3.</span> PageSpeed: keep mobile score above 90; fix any CLS/LCP regressions.</li>
+          <li className="flex gap-2"><span className="text-gold-400">4.</span> AdSense: check RPM and policy center for any flags.</li>
+        </ul>
       </div>
     </div>
   );

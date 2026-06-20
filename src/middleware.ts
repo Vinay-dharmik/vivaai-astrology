@@ -1,4 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getToken } from "next-auth/jwt";
+
+const ADMIN_EMAIL = "vinaydharmik007@gmail.com";
 
 /**
  * VivaAI Middleware — runs on every request at the edge.
@@ -7,17 +10,15 @@ import { NextRequest, NextResponse } from "next/server";
  * 2. API rate limiting headers
  * 3. Security headers for sensitive routes
  */
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
   // ── Admin route protection ────────────────────────
-  // If accessing /vinayd/* (except login page), check for session
+  // If accessing /vinayd/* (except login page), require the fixed admin session
   if (pathname.startsWith("/vinayd") && !pathname.startsWith("/vinayd/login")) {
-    const sessionToken =
-      req.cookies.get("next-auth.session-token")?.value ||
-      req.cookies.get("__Secure-next-auth.session-token")?.value;
+    const token = await getToken({ req, secret: process.env.NEXTAUTH_SECRET });
 
-    if (!sessionToken) {
+    if (token?.email !== ADMIN_EMAIL || token.role !== "SUPER_ADMIN") {
       const loginUrl = new URL("/vinayd/login", req.url);
       return NextResponse.redirect(loginUrl);
     }

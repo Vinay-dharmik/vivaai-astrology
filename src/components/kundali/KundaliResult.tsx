@@ -197,9 +197,25 @@ export function KundaliResult({ data }: { data: KundaliData }) {
       {/* Dosha Analysis */}
       <LockedSection title="Dosha Analysis (Manglik, Kaal Sarp, Sade Sati)" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
         <div className="space-y-3">
-          <DoshaCard title="Manglik Dosha" active={data.doshas.manglik.status} severity={data.doshas.manglik.severity} text={data.doshas.manglik.details} />
-          <DoshaCard title="Kaal Sarp Dosha" active={data.doshas.kaalSarp.status} severity={data.doshas.kaalSarp.status ? "Active" : "None"} text={data.doshas.kaalSarp.details} />
-          <DoshaCard title="Sade Sati" active={data.doshas.sadeSati.status} severity={data.doshas.sadeSati.phase} text={data.doshas.sadeSati.details} />
+          <DoshaCard
+            title="Manglik Dosha"
+            active={data.doshas.manglik.status && !data.doshas.manglik.isCancelled}
+            severity={data.doshas.manglik.severity}
+            text={data.doshas.manglik.details}
+            badge={data.doshas.manglik.isCancelled ? "Cancelled" : undefined}
+          />
+          <DoshaCard
+            title={data.doshas.kaalSarp.type || "Kaal Sarp Dosha"}
+            active={data.doshas.kaalSarp.status}
+            severity={data.doshas.kaalSarp.status ? "Active" : "None"}
+            text={data.doshas.kaalSarp.details}
+          />
+          <DoshaCard
+            title="Sade Sati"
+            active={data.doshas.sadeSati.status}
+            severity={data.doshas.sadeSati.phase}
+            text={data.doshas.sadeSati.details}
+          />
         </div>
       </LockedSection>
 
@@ -217,19 +233,97 @@ export function KundaliResult({ data }: { data: KundaliData }) {
         </div>
       </LockedSection>
 
-      {/* Yoga Analysis — LOCKED */}
-      <LockedSection title="Yoga Analysis (Raj Yoga, Gajakesari, Budhaditya & More)" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
-        <div className="space-y-2">
-          {data.yogas.map((y, i) => (
-            <div key={i} className={`rounded-lg p-3 border-l-4 ${y.formed ? "bg-mystic-green/5 border-mystic-green" : "bg-white/[0.02] border-[var(--border)]"}`}>
-              <div className="flex items-center justify-between">
-                <span className="font-semibold text-sm text-white">{y.name}</span>
-                {y.formed && <span className="text-xs text-mystic-green bg-mystic-green/10 px-2 py-0.5 rounded-full">Active</span>}
-              </div>
-              <p className="text-xs text-[var(--text-muted)] mt-1">Planets: {y.planets}</p>
-              <p className="text-xs text-[var(--text-secondary)] mt-0.5">{y.effect}</p>
+      {/* Yoga Analysis */}
+      <LockedSection title="Yoga Analysis — 23 Classical Yogas" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
+        {/* Formed yogas first */}
+        {data.yogas.filter((y) => y.formed).length > 0 && (
+          <div className="mb-4">
+            <p className="text-xs text-gold-200 uppercase tracking-wider font-semibold mb-2">Active Yogas in Your Chart</p>
+            <div className="space-y-2">
+              {data.yogas.filter((y) => y.formed).map((y, i) => (
+                <div key={i} className={`rounded-lg p-3 border-l-4 ${
+                  y.category === "malefic" ? "bg-red-400/5 border-red-400/60" :
+                  y.strength === "strong" ? "bg-mystic-green/8 border-mystic-green" :
+                  "bg-gold-400/5 border-gold-400/50"
+                }`}>
+                  <div className="flex items-center justify-between flex-wrap gap-1">
+                    <div className="flex items-center gap-2">
+                      <span className="font-semibold text-sm text-white">{y.name}</span>
+                      {y.sanskrit && <span className="text-[0.6rem] text-[var(--text-muted)]">{y.sanskrit}</span>}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      {y.strength === "strong" && <span className="text-[0.6rem] text-mystic-green bg-mystic-green/10 px-2 py-0.5 rounded-full font-semibold uppercase">Strong</span>}
+                      {y.strength === "moderate" && <span className="text-[0.6rem] text-gold-400 bg-gold-400/10 px-2 py-0.5 rounded-full font-semibold uppercase">Moderate</span>}
+                      <span className={`text-[0.6rem] px-2 py-0.5 rounded-full font-semibold uppercase ${y.category === "malefic" ? "text-red-400 bg-red-400/10" : "text-mystic-green bg-mystic-green/10"}`}>
+                        {y.category === "malefic" ? "Challenging" : "Active"}
+                      </span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-gold-400/80 mt-1">Planets: {y.planets}</p>
+                  <p className="text-xs text-[var(--text-secondary)] mt-0.5 leading-relaxed">{y.effect}</p>
+                </div>
+              ))}
             </div>
-          ))}
+          </div>
+        )}
+        {/* Unformed yogas — collapsed summary */}
+        {data.yogas.filter((y) => !y.formed).length > 0 && (
+          <details className="group">
+            <summary className="text-xs text-[var(--text-muted)] cursor-pointer hover:text-gold-400 transition select-none">
+              ▸ {data.yogas.filter((y) => !y.formed).length} yogas not present in this chart (click to see)
+            </summary>
+            <div className="mt-2 space-y-1.5">
+              {data.yogas.filter((y) => !y.formed).map((y, i) => (
+                <div key={i} className="rounded-lg px-3 py-2 bg-white/[0.02] border border-[var(--border)]">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs text-[var(--text-muted)] font-medium">{y.name}</span>
+                    {y.sanskrit && <span className="text-[0.55rem] text-[var(--text-muted)]/60">{y.sanskrit}</span>}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </details>
+        )}
+        {data.yogas.filter((y) => y.formed).length === 0 && (
+          <p className="text-sm text-[var(--text-muted)]">No major yogas formed. Success comes through consistent effort and discipline.</p>
+        )}
+      </LockedSection>
+
+      {/* Navamsa D9 Chart */}
+      <LockedSection title="Navamsa (D9) Chart — Marriage & Soul Blueprint" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
+        <p className="text-xs text-[var(--text-muted)] mb-3">The Navamsa chart is the most important divisional chart, revealing the soul&apos;s deeper purpose and marriage destiny. Vargottama planets (same sign in D1 and D9) are especially powerful.</p>
+        <div className="overflow-x-auto">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-gold-400/20">
+                <th className="text-left py-2 px-2 text-gold-200 font-medium uppercase">Planet</th>
+                <th className="text-left py-2 px-2 text-gold-200 font-medium uppercase">D9 Sign</th>
+                <th className="text-left py-2 px-2 text-gold-200 font-medium uppercase">Lord</th>
+                <th className="text-left py-2 px-2 text-gold-200 font-medium uppercase">D9 Dignity</th>
+              </tr>
+            </thead>
+            <tbody>
+              {(data.navamsa || []).map((n) => (
+                <tr key={n.planet} className="border-b border-[var(--border)] hover:bg-white/[0.02]">
+                  <td className="py-2 px-2 font-medium text-white">{n.planet}</td>
+                  <td className="py-2 px-2 text-[var(--text-secondary)]">{n.navamsaSign} ({n.navamsaEnglish})</td>
+                  <td className="py-2 px-2 text-[var(--text-muted)]">{n.navamsaLord}</td>
+                  <td className="py-2 px-2">
+                    {n.dignity === "Vargottama ✦"
+                      ? <span className="text-gold-400 font-semibold">{n.dignity}</span>
+                      : n.dignity === "Exalted ⬆"
+                      ? <span className="text-mystic-green">{n.dignity}</span>
+                      : n.dignity === "Debilitated ⬇"
+                      ? <span className="text-red-400">{n.dignity}</span>
+                      : n.dignity === "Own Sign ★"
+                      ? <span className="text-gold-400">{n.dignity}</span>
+                      : <span className="text-[var(--text-muted)]">{n.dignity}</span>
+                    }
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </LockedSection>
 
@@ -386,16 +480,27 @@ function Card({ label, value, sub, highlight }: { label: string; value: string; 
   );
 }
 
-function DoshaCard({ title, active, severity, text }: { title: string; active: boolean; severity: string; text: string }) {
+function DoshaCard({ title, active, severity, text, badge }: { title: string; active: boolean; severity: string; text: string; badge?: string }) {
+  const isCancelled = badge === "Cancelled";
+  const borderColor = isCancelled ? "border-gold-400/60" : active ? "border-red-400" : "border-mystic-green";
+  const bgColor = isCancelled ? "bg-gold-400/5" : active ? "bg-red-400/5" : "bg-mystic-green/5";
   return (
-    <div className={`rounded-lg p-4 border-l-4 ${active ? "border-red-400 bg-red-400/5" : "border-mystic-green bg-mystic-green/5"}`}>
-      <div className="flex items-center justify-between mb-1">
+    <div className={`rounded-lg p-4 border-l-4 ${borderColor} ${bgColor}`}>
+      <div className="flex items-center justify-between mb-1 flex-wrap gap-1">
         <span className="font-semibold text-sm text-white">{title}</span>
-        <span className={`text-xs px-2 py-0.5 rounded-full ${active ? "bg-red-400/20 text-red-400" : "bg-mystic-green/20 text-mystic-green"}`}>
-          {active ? severity : "Not Present"}
-        </span>
+        <div className="flex items-center gap-1.5">
+          {isCancelled && (
+            <span className="text-xs px-2 py-0.5 rounded-full bg-gold-400/20 text-gold-400 font-semibold">Cancelled</span>
+          )}
+          <span className={`text-xs px-2 py-0.5 rounded-full ${
+            isCancelled ? "bg-gold-400/10 text-gold-400" :
+            active ? "bg-red-400/20 text-red-400" : "bg-mystic-green/20 text-mystic-green"
+          }`}>
+            {isCancelled ? "Mild" : active ? severity : "Not Present"}
+          </span>
+        </div>
       </div>
-      <p className="text-xs text-[var(--text-muted)]">{text}</p>
+      <p className="text-xs text-[var(--text-muted)] leading-relaxed">{text}</p>
     </div>
   );
 }

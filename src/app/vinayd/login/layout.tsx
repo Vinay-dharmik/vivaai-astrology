@@ -7,9 +7,9 @@ export default function LoginLayout({ children }: { children: React.ReactNode })
     <>
       {/* Override admin sidebar visibility on login page */}
       <style dangerouslySetInnerHTML={{ __html: `
-        .min-h-screen.flex > aside,
-        .min-h-screen.flex > div:first-child { display: none !important; }
-        .min-h-screen.flex > main { margin-left: 0 !important; }
+        .admin-shell > aside,
+        .admin-shell > div.hidden { display: none !important; }
+        .admin-shell > main { margin-left: 0 !important; }
       `}} />
       {children}
     </>

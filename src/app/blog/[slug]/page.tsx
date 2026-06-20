@@ -13,10 +13,15 @@ export async function generateMetadata({ params }: PageProps) {
   const { slug } = await params;
   const post = getPostBySlug(slug);
   if (!post) return {};
+  // Auto-derive keywords from slug, category, and title words
+  const slugWords = slug.split("-").filter(w => w.length > 3);
+  const titleWords = post.title.toLowerCase().split(/[\s—:,&]+/).filter(w => w.length > 3);
+  const autoKeywords = [...new Set([...slugWords, ...titleWords, post.category.toLowerCase(), "vedic astrology", "astrology guide"])];
   return seoMeta({
     title: post.title,
     description: post.description,
     path: `/blog/${slug}`,
+    keywords: autoKeywords,
   });
 }
 

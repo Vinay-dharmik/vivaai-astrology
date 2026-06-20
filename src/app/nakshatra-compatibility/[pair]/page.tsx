@@ -48,7 +48,6 @@ export default async function NakshatraCompatPage({ params }: PageProps) {
     applicationCategory: "LifestyleApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
-    aggregateRating: { "@type": "AggregateRating", ratingValue: "4.7", ratingCount: String(800 + Math.floor(s1.charCodeAt(0) * 17 + s2.charCodeAt(0) * 13) % 500) },
   };
 
   const faqJsonLd = {

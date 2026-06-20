@@ -20,12 +20,12 @@ const ALL_TOOLS: RelatedLink[] = [
   { href: "/matching", title: "Kundali Matching", desc: "36-point Ashtakoot compatibility analysis" },
   { href: "/nakshatra-compatibility", title: "Nakshatra Matching", desc: "27 Nakshatra compatibility checker" },
   { href: "/calculator/numerology", title: "Numerology", desc: "Life path, destiny & soul number calculator" },
-  { href: "/calculator/panchang", title: "Panchang", desc: "Today's Tithi, Nakshatra, Yoga & Karana" },
+  { href: "/panchang", title: "Panchang", desc: "Today's Tithi, Nakshatra, Yoga & Karana" },
   { href: "/calculator/lucky-number", title: "Lucky Number", desc: "Find your lucky number by name & DOB" },
   { href: "/calculator/lucky-color", title: "Lucky Color", desc: "Discover your auspicious colors" },
   { href: "/calculator/mangal-dosha", title: "Mangal Dosha", desc: "Check Mars placement & remedies" },
   { href: "/calculator/marriage-age", title: "Marriage Age", desc: "Predicted marriage timing window" },
-  { href: "/zodiac", title: "Zodiac Signs", desc: "Explore all 12 zodiac sign profiles" },
+  { href: "/compatibility", title: "Zodiac Compatibility", desc: "Explore all 12 zodiac sign compatibility" },
   { href: "/blog", title: "Astrology Blog", desc: "Expert articles on Vedic astrology" },
 ];
 

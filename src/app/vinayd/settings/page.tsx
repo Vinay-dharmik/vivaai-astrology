@@ -36,7 +36,7 @@ export default function AdminSettingsPage() {
       <div className="space-y-3">
         <SettingCard icon={Globe} title="Site Settings" description="Site name, URL, description, and global SEO settings" action="Configure" color="bg-blue-500/20 text-blue-400" />
         <SettingCard icon={Database} title="Database" description="PostgreSQL connection, Prisma migrations, and data management" action="Configure" color="bg-emerald-500/20 text-emerald-400" />
-        <SettingCard icon={Key} title="API Keys" description="Razorpay, Google OAuth, Analytics, and AdSense credentials" action="Manage" color="bg-gold-400/20 text-gold-400" />
+        <SettingCard icon={Key} title="API Keys" description="Razorpay, Analytics, and AdSense credentials" action="Manage" color="bg-gold-400/20 text-gold-400" />
         <SettingCard icon={CreditCard} title="Pricing Plans" description="Manage free, starter, premium, and detailed report pricing" action="Edit" color="bg-purple-500/20 text-purple-400" />
         <SettingCard icon={Bell} title="Notifications" description="Email alerts, webhook notifications, and admin notifications" action="Configure" color="bg-orange-500/20 text-orange-400" />
         <SettingCard icon={Shield} title="Security" description="Rate limiting, CORS, CSP headers, and admin access controls" action="Configure" color="bg-red-500/20 text-red-400" />
@@ -51,8 +51,6 @@ export default function AdminSettingsPage() {
             { key: "RAZORPAY_KEY_SECRET", set: true },
             { key: "NEXT_PUBLIC_GA_ID", set: true },
             { key: "NEXT_PUBLIC_ADSENSE_ID", set: true },
-            { key: "GOOGLE_CLIENT_ID", set: false },
-            { key: "GOOGLE_CLIENT_SECRET", set: false },
             { key: "DATABASE_URL", set: false },
             { key: "NEXTAUTH_SECRET", set: false },
           ].map(e => (

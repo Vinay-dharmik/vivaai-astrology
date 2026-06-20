@@ -24,7 +24,7 @@ export default function AdminLayout({ children }: { children: React.ReactNode })
         [class*="CookieConsent"] { display: none !important; }
         body > main { padding-top: 0 !important; }
       `}} />
-      <div className="min-h-screen flex" style={{ background: "#0a0a14" }}>
+      <div className="admin-shell min-h-screen flex" style={{ background: "#0a0a14" }}>
         <AdminSidebar />
         <main className="flex-1 min-h-screen overflow-x-hidden">
           <div className="p-4 sm:p-6 lg:p-8 max-w-7xl mx-auto">

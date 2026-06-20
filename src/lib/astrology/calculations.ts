@@ -69,6 +69,12 @@ export interface PlanetRow {
   rashiEnglish: string;
   house: number;
   signIndex: number;
+  // Enriched fields populated by KundaliForm — optional so buildPlanetRows stays valid
+  nakshatra?: string;
+  nakshatraPada?: number;
+  isRetrograde?: boolean;
+  signDegree?: number;
+  dignity?: string;
 }
 
 function eclipticLon(vec: unknown, Astro: any): number {
@@ -270,4 +276,146 @@ export function to24Hour(h12: number, min: number, meridiem: string) {
   let hour = h12 % 12;
   if (meridiem === "PM") hour += 12;
   return { hour24: hour, minute: min };
+}
+
+// ── Navamsa (D9) Chart ────────────────────────────────────
+// Divides each rashi into 9 navamsas of 3°20' (200') each.
+// The starting navamsa sign depends on the main sign's element:
+//   Fire  → starts from Aries  (0)
+//   Earth → starts from Capricorn (9)
+//   Air   → starts from Libra  (6)
+//   Water → starts from Cancer (3)
+
+export interface NavamsaResult {
+  planet: string;
+  navamsaSignIndex: number;
+  navamsaSign: string;
+  navamsaEnglish: string;
+  navamsaLord: string;
+  dignity: string;
+}
+
+const NAVAMSA_START: Record<string, number> = {
+  Fire: 0, Earth: 9, Air: 6, Water: 3,
+};
+
+export function calcNavamsa(siderealLons: Record<string, number>): NavamsaResult[] {
+  return BODY_ORDER.map((planet) => {
+    const lon = normalizeDegree(siderealLons[planet]);
+    const signIdx = Math.floor(lon / 30);
+    const degInSign = lon % 30;
+    const navamsaIdx = Math.floor(degInSign / (30 / 9)); // 0–8
+    const element = RASHI[signIdx].element;
+    const startSign = NAVAMSA_START[element] ?? 0;
+    const navamsaSignIndex = (startSign + navamsaIdx) % 12;
+    const rashi = RASHI[navamsaSignIndex];
+
+    // Dignity in navamsa
+    const exalted: Record<string, string> = { Sun: "Aries", Moon: "Taurus", Mars: "Capricorn", Mercury: "Virgo", Jupiter: "Cancer", Venus: "Pisces", Saturn: "Libra" };
+    const debilitated: Record<string, string> = { Sun: "Libra", Moon: "Scorpio", Mars: "Cancer", Mercury: "Pisces", Jupiter: "Capricorn", Venus: "Virgo", Saturn: "Aries" };
+    const own: Record<string, string[]> = { Sun: ["Leo"], Moon: ["Cancer"], Mars: ["Aries", "Scorpio"], Mercury: ["Gemini", "Virgo"], Jupiter: ["Sagittarius", "Pisces"], Venus: ["Taurus", "Libra"], Saturn: ["Capricorn", "Aquarius"] };
+
+    let dignity = "Normal";
+    if (exalted[planet] === rashi.english) dignity = "Exalted ⬆";
+    else if (debilitated[planet] === rashi.english) dignity = "Debilitated ⬇";
+    else if (own[planet]?.includes(rashi.english)) dignity = "Own Sign ★";
+
+    // Vargottama: planet in same sign in both D1 and D9 — very auspicious
+    if (navamsaSignIndex === signIdx) dignity = "Vargottama ✦";
+
+    return {
+      planet,
+      navamsaSignIndex,
+      navamsaSign: rashi.name,
+      navamsaEnglish: rashi.english,
+      navamsaLord: rashi.lord,
+      dignity,
+    };
+  });
+}
+
+// ── Proper Vimshottari Antardasha ─────────────────────────
+// Sub-period duration = (MahaDasha_years × AntarDasha_years) / 120
+
+export interface DetailedDasha {
+  mahaLord: string;
+  mahaRange: string;
+  mahaRemaining: string;
+  antarLord: string;
+  antarRange: string;
+  nextMahaLord: string;
+  nextMahaStartAge: string;
+}
+
+export function getDetailedVimshottari(nakLord: string, ageYears: number): DetailedDasha {
+  const totalCycle = 120;
+  const startIdx = Math.max(VIM_ORDER.indexOf(nakLord), 0);
+  let cumulative = 0;
+  let mahaIdx = startIdx;
+  let mahaStart = 0;
+
+  for (let i = 0; i < 18; i++) {
+    const lord = VIM_ORDER[(startIdx + i) % 9];
+    const years = VIM_YEARS[lord];
+    if (ageYears <= cumulative + years) {
+      mahaIdx = (startIdx + i) % 9;
+      mahaStart = cumulative;
+      break;
+    }
+    cumulative += years;
+  }
+
+  const mahaLord = VIM_ORDER[mahaIdx];
+  const mahaYears = VIM_YEARS[mahaLord];
+  const mahaEnd = mahaStart + mahaYears;
+  const ageInMaha = ageYears - mahaStart;
+
+  // Calculate antardasha
+  let antarStart = 0;
+  let antarLord = mahaLord;
+
+  for (let j = 0; j < 9; j++) {
+    const aIdx = (mahaIdx + j) % 9;
+    const aLord = VIM_ORDER[aIdx];
+    const aYears = (mahaYears * VIM_YEARS[aLord]) / totalCycle;
+    if (ageInMaha <= antarStart + aYears) {
+      antarLord = aLord;
+      break;
+    }
+    antarStart += aYears;
+  }
+
+  const nextMahaLord = VIM_ORDER[(mahaIdx + 1) % 9];
+
+  return {
+    mahaLord,
+    mahaRange: `${mahaStart.toFixed(1)} – ${mahaEnd.toFixed(1)} yrs`,
+    mahaRemaining: `${Math.max(0, mahaEnd - ageYears).toFixed(1)} yrs remaining`,
+    antarLord,
+    antarRange: `Currently in ${mahaLord}–${antarLord} period`,
+    nextMahaLord,
+    nextMahaStartAge: mahaEnd.toFixed(1),
+  };
+}
+
+// ── Planet Dignity Lookup ─────────────────────────────────
+
+export function getPlanetDignity(body: string, signEnglish: string): string {
+  const exalted: Record<string, string> = { Sun: "Aries", Moon: "Taurus", Mars: "Capricorn", Mercury: "Virgo", Jupiter: "Cancer", Venus: "Pisces", Saturn: "Libra" };
+  const debilitated: Record<string, string> = { Sun: "Libra", Moon: "Scorpio", Mars: "Cancer", Mercury: "Pisces", Jupiter: "Capricorn", Venus: "Virgo", Saturn: "Aries" };
+  const own: Record<string, string[]> = { Sun: ["Leo"], Moon: ["Cancer"], Mars: ["Aries", "Scorpio"], Mercury: ["Gemini", "Virgo"], Jupiter: ["Sagittarius", "Pisces"], Venus: ["Taurus", "Libra"], Saturn: ["Capricorn", "Aquarius"] };
+  if (exalted[body] === signEnglish) return "Exalted ⬆";
+  if (debilitated[body] === signEnglish) return "Debilitated ⬇";
+  if (own[body]?.includes(signEnglish)) return "Own Sign ★";
+  return "Normal";
+}
+
+// ── Lagna Lord Placement Strength ────────────────────────
+// Returns a plain-text strength label for a planet's house position
+
+export function getHouseStrength(house: number): "excellent" | "good" | "neutral" | "challenging" {
+  if ([1, 4, 5, 7, 9, 10, 11].includes(house)) return "excellent";
+  if ([2, 3].includes(house)) return "good";
+  if ([6, 8, 12].includes(house)) return "challenging";
+  return "neutral";
 }

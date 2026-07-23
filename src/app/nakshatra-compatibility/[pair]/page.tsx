@@ -3,7 +3,6 @@ import { getNakshatraCompat, slugify, unslugify, NAKSHATRA_DATA } from "@/lib/as
 import { seoMeta } from "@/lib/seo/metadata";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ShareButtons } from "@/components/ui/ShareButtons";
-import { InArticleAd } from "@/components/ui/AdBanner";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -29,6 +28,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${name1} and ${name2} Nakshatra Compatibility`,
     description: `${name1} and ${name2} Nakshatra compatibility for marriage. Detailed Gana, Yoni, Nadi & planetary lord matching analysis with score, remedies and predictions. Free Vedic compatibility check.`,
     path: `/nakshatra-compatibility/${pair}`,
+    // One of 729 generated result pages — calculator output, not an article.
+    noindex: true,
   });
 }
 
@@ -114,8 +115,6 @@ export default async function NakshatraCompatPage({ params }: PageProps) {
         ))}
       </div>
 
-      <InArticleAd />
-
       {/* Strengths & Challenges */}
       {result.strengths.length > 0 && (
         <div className="glass-card p-5 mb-4">
@@ -167,8 +166,6 @@ export default async function NakshatraCompatPage({ params }: PageProps) {
           <Link href="/kundali" className="glass-card px-6 py-2 text-sm text-gold-200 hover:text-gold-400 transition">Generate Kundali</Link>
         </div>
       </div>
-
-      <InArticleAd />
     </div>
   );
 }

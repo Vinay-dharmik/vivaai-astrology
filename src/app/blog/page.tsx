@@ -1,12 +1,12 @@
 import Link from "next/link";
 import { seoMeta } from "@/lib/seo/metadata";
-import { BLOG_POSTS } from "@/lib/blog/posts";
+import { EDITORIAL_POSTS } from "@/lib/blog/posts";
 import { Calendar, Clock, Tag } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { InArticleAd } from "@/components/ui/AdBanner";
 
 export const metadata = seoMeta({
-  title: "Astrology Blog — 50+ Expert Vedic Astrology Articles & Guides",
+  title: "Astrology Blog — Vedic Astrology Articles & Guides",
   description: "Expert articles on Vedic astrology, Kundali, zodiac signs, planets, houses, doshas, numerology & more. Learn astrology from comprehensive, easy-to-understand guides.",
   path: "/blog",
   keywords: [
@@ -18,7 +18,7 @@ export const metadata = seoMeta({
 
 export default function BlogPage() {
   // Get unique categories
-  const categories = Array.from(new Set(BLOG_POSTS.map(p => p.category))).sort();
+  const categories = Array.from(new Set(EDITORIAL_POSTS.map(p => p.category))).sort();
 
   return (
     <div className="section-container py-12 max-w-4xl mx-auto">
@@ -26,7 +26,7 @@ export default function BlogPage() {
       <div className="text-center mb-8">
         <h1 className="font-sora font-extrabold text-3xl sm:text-4xl gold-text mb-3">Astrology Blog</h1>
         <p className="text-[var(--text-muted)] max-w-xl mx-auto">
-          {BLOG_POSTS.length}+ expert articles on Vedic astrology, zodiac signs, planetary effects, and more.
+          {EDITORIAL_POSTS.length} in-depth articles on Vedic astrology, zodiac signs, planetary effects, and more — each written and reviewed by hand.
         </p>
       </div>
 
@@ -42,7 +42,7 @@ export default function BlogPage() {
 
       {/* Posts grouped by category */}
       {categories.map((cat, catIdx) => {
-        const catPosts = BLOG_POSTS.filter(p => p.category === cat);
+        const catPosts = EDITORIAL_POSTS.filter(p => p.category === cat);
         return (
           <div key={cat} id={`cat-${cat.toLowerCase().replace(/\s+/g, "-")}`} className="mb-10">
             <h2 className="font-sora font-bold text-lg gold-text mb-4 flex items-center gap-2">

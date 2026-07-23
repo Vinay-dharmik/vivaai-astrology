@@ -2,7 +2,6 @@ import { getPlanetHouseData, PLANETS_FOR_HOUSES, HOUSES, HOUSE_NAMES, HOUSE_TOPI
 import { seoMeta } from "@/lib/seo/metadata";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ShareButtons } from "@/components/ui/ShareButtons";
-import { InArticleAd } from "@/components/ui/AdBanner";
 import Link from "next/link";
 import { Metadata } from "next";
 
@@ -36,6 +35,8 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
     title: `${data.title} — Effects & Remedies`,
     description: `${parsed.planet} in ${HOUSE_NAMES[parsed.house]} House effects on career, marriage, health & finance. Detailed Vedic astrology analysis with remedies, gemstones & predictions.`,
     path: `/astrology/${slug}`,
+    // One of 108 generated placement pages — reference output, not an article.
+    noindex: true,
   });
 }
 
@@ -89,8 +90,6 @@ export default async function PlanetHousePage({ params }: PageProps) {
         </div>
       </div>
 
-      <InArticleAd />
-
       <div className="glass-card p-5 mb-4">
         <h2 className="text-sm font-semibold text-red-400 uppercase tracking-wider mb-3">⚠ Challenges</h2>
         <ul className="space-y-1.5">
@@ -128,8 +127,6 @@ export default async function PlanetHousePage({ params }: PageProps) {
         <p className="text-sm text-[var(--text-muted)] mb-4">Generate your free Vedic Kundali to see all planetary positions.</p>
         <Link href="/kundali" className="gold-btn px-6 py-2 text-sm">Generate Free Kundali</Link>
       </div>
-
-      <InArticleAd />
     </div>
   );
 }

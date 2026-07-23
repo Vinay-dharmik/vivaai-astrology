@@ -40,6 +40,7 @@ const LEGAL = [
   { href: "/about", label: "About Us" },
   { href: "/contact", label: "Contact" },
   { href: "/blog", label: "Blog" },
+  { href: "/editorial-policy", label: "Editorial Policy" },
   { href: "/privacy", label: "Privacy Policy" },
   { href: "/terms", label: "Terms & Conditions" },
   { href: "/disclaimer", label: "Disclaimer" },

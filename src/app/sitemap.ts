@@ -1,16 +1,19 @@
 import type { MetadataRoute } from "next";
-import { BLOG_POSTS } from "@/lib/blog/posts";
+import { EDITORIAL_POSTS } from "@/lib/blog/posts";
 import { NAKSHATRAS } from "@/lib/astrology/constants";
 import { slugify } from "@/lib/astrology/nakshatraCompat";
-import { BODY_ORDER } from "@/lib/astrology/constants";
 
 const BASE = "https://vivaai.in";
 const SIGNS = ["aries","taurus","gemini","cancer","leo","virgo","libra","scorpio","sagittarius","capricorn","aquarius","pisces"];
-const HOUSE_SUFFIX = (h: number) => h === 1 ? "1st" : h === 2 ? "2nd" : h === 3 ? "3rd" : `${h}th`;
 
 /**
- * Comprehensive sitemap including ALL programmatic pages.
- * Google sitemaps support up to 50,000 URLs — we use ~1000+.
+ * Sitemap of pages we actually want indexed.
+ *
+ * Deliberately excludes the 729 nakshatra-pair pages, the 108 planet-in-house
+ * pages and the templated blog posts. Those are generated from data templates,
+ * so submitting them tells search engines the site is mostly boilerplate. They
+ * are still crawlable and linked from their hub pages — they just carry a
+ * noindex and stay out of here.
  */
 export default function sitemap(): MetadataRoute.Sitemap {
   // `now` is for genuinely daily-changing pages (home, horoscope, panchang).
@@ -40,6 +43,7 @@ export default function sitemap(): MetadataRoute.Sitemap {
     { url: `${BASE}/blog`, lastModified: now, changeFrequency: "weekly", priority: 0.7 },
     { url: `${BASE}/about`, lastModified: built, changeFrequency: "monthly", priority: 0.4 },
     { url: `${BASE}/contact`, lastModified: built, changeFrequency: "monthly", priority: 0.4 },
+    { url: `${BASE}/editorial-policy`, lastModified: built, changeFrequency: "yearly", priority: 0.4 },
     { url: `${BASE}/privacy`, lastModified: built, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/terms`, lastModified: built, changeFrequency: "yearly", priority: 0.3 },
     { url: `${BASE}/disclaimer`, lastModified: built, changeFrequency: "yearly", priority: 0.3 },
@@ -71,35 +75,12 @@ export default function sitemap(): MetadataRoute.Sitemap {
   }));
 
   // ── Blog posts (all) ──────────────────────────
-  const blogs: MetadataRoute.Sitemap = BLOG_POSTS.map(post => ({
+  const blogs: MetadataRoute.Sitemap = EDITORIAL_POSTS.map(post => ({
     url: `${BASE}/blog/${post.slug}`,
     lastModified: post.date,
     changeFrequency: "monthly",
     priority: 0.6,
   }));
-
-  // ── ALL 729 Nakshatra Compatibility pages ─────
-  const nakCompat: MetadataRoute.Sitemap = [];
-  for (let i = 0; i < 27; i++) {
-    for (let j = 0; j < 27; j++) {
-      nakCompat.push({
-        url: `${BASE}/nakshatra-compatibility/${slugify(NAKSHATRAS[i])}-and-${slugify(NAKSHATRAS[j])}`,
-        lastModified: built,
-        changeFrequency: "monthly",
-        priority: 0.55,
-      });
-    }
-  }
-
-  // ── ALL 108 Planet-in-House pages ─────────────
-  const planetHouse: MetadataRoute.Sitemap = BODY_ORDER.flatMap(planet =>
-    Array.from({ length: 12 }, (_, h) => ({
-      url: `${BASE}/astrology/${planet.toLowerCase()}-in-${HOUSE_SUFFIX(h + 1)}-house`,
-      lastModified: built,
-      changeFrequency: "monthly",
-      priority: 0.55,
-    }))
-  );
 
   return [
     ...core,
@@ -107,7 +88,5 @@ export default function sitemap(): MetadataRoute.Sitemap {
     ...compatibility,
     ...nakshatraPages,
     ...blogs,
-    ...nakCompat,
-    ...planetHouse,
   ];
 }

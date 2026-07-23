@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import Link from "next/link";
 import { seoMeta } from "@/lib/seo/metadata";
-import { BLOG_POSTS, getPostBySlug } from "@/lib/blog/posts";
+import { BLOG_POSTS, EDITORIAL_POSTS, getPostBySlug } from "@/lib/blog/posts";
 import { Calendar, Clock, Tag, ArrowLeft, ArrowRight } from "lucide-react";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
 import { ShareButtons } from "@/components/ui/ShareButtons";
@@ -22,6 +22,7 @@ export async function generateMetadata({ params }: PageProps) {
     description: post.description,
     path: `/blog/${slug}`,
     keywords: autoKeywords,
+    noindex: post.generated,
   });
 }
 
@@ -99,9 +100,11 @@ export default async function BlogPostPage({ params }: PageProps) {
   const post = getPostBySlug(slug);
   if (!post) notFound();
 
-  const currentIdx = BLOG_POSTS.findIndex((p) => p.slug === slug);
-  const prev = currentIdx > 0 ? BLOG_POSTS[currentIdx - 1] : null;
-  const next = currentIdx < BLOG_POSTS.length - 1 ? BLOG_POSTS[currentIdx + 1] : null;
+  // Navigate within editorial articles only — templated posts are reference
+  // pages and shouldn't be threaded into the reading sequence.
+  const currentIdx = EDITORIAL_POSTS.findIndex((p) => p.slug === slug);
+  const prev = currentIdx > 0 ? EDITORIAL_POSTS[currentIdx - 1] : null;
+  const next = currentIdx >= 0 && currentIdx < EDITORIAL_POSTS.length - 1 ? EDITORIAL_POSTS[currentIdx + 1] : null;
 
   const articleJsonLd = {
     "@context": "https://schema.org",
@@ -133,8 +136,8 @@ export default async function BlogPostPage({ params }: PageProps) {
         {renderContent(post.content)}
       </div>
 
-      {/* Ad placement */}
-      <InArticleAd />
+      {/* Ad placement — editorial articles only */}
+      {!post.generated && <InArticleAd />}
 
       {/* Social sharing */}
       <div className="flex justify-center mt-6">

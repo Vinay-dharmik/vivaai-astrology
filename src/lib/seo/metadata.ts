@@ -19,6 +19,13 @@ export function seoMeta(opts: {
   path?: string;
   image?: string;
   keywords?: string[];
+  /**
+   * Set on pages that are calculator output rather than editorial content —
+   * they are template-driven, so indexing hundreds of them reads as thin /
+   * scaled content to search engines. They stay crawlable (follow) so the
+   * internal links still pass, but they are kept out of the index.
+   */
+  noindex?: boolean;
 }): Metadata {
   // Keep title under 60 chars by using short suffix
   const title = opts.title ? `${opts.title} — VivaAI` : `${NAME} — Free Vedic Kundali & AI Astrology`;
@@ -54,6 +61,8 @@ export function seoMeta(opts: {
       description,
       creator: "@vivaai_in",
     },
-    robots: { index: true, follow: true },
+    robots: opts.noindex
+      ? { index: false, follow: true, googleBot: { index: false, follow: true } }
+      : { index: true, follow: true },
   };
 }

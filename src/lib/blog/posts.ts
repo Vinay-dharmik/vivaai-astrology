@@ -8,6 +8,12 @@ export interface BlogPost {
   category: string;
   readTime: string;
   content: string;
+  /**
+   * True for posts assembled from a data template rather than written by an
+   * editor. They stay reachable but are excluded from the blog index, the
+   * sitemap, and ad placement so the site is judged on its editorial work.
+   */
+  generated?: boolean;
 }
 
 const MANUAL_POSTS: BlogPost[] = [
@@ -631,6 +637,14 @@ Explore your career potential with planet-in-house analysis on our [astrology pa
 
 /** All blog posts — hand-written + programmatically generated */
 export const BLOG_POSTS: BlogPost[] = [...MANUAL_POSTS, ...GENERATED_POSTS];
+
+/**
+ * Hand-written articles only. This is what the blog index, the sitemap and
+ * the prev/next navigation use — templated posts are reference material, not
+ * editorial content, and presenting them as articles is what makes a site
+ * read as thin.
+ */
+export const EDITORIAL_POSTS: BlogPost[] = BLOG_POSTS.filter((p) => !p.generated);
 
 export function getPostBySlug(slug: string): BlogPost | undefined {
   return BLOG_POSTS.find((p) => p.slug === slug);

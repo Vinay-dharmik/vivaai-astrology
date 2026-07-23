@@ -84,7 +84,7 @@ export default function AboutPage() {
           <li><strong className="text-white">Numerology, Remedies, Compatibility</strong> — And 8 more specialized tools for every astrological need.</li>
         </ul>
         <p>
-          We also maintain an <Link href="/blog" className="text-gold-400 hover:underline">extensive astrology blog</Link> with 50+ expert articles covering topics from beginner guides to advanced Dasha analysis, ensuring our users have the educational resources to understand and benefit from their astrological insights.
+          We also maintain an <Link href="/blog" className="text-gold-400 hover:underline">astrology blog</Link> of hand-written long-form guides covering topics from beginner explanations of the birth chart to advanced Dasha analysis, so our users have the educational resources to understand and benefit from their astrological insights. How those articles are written, sourced and reviewed is described in our <Link href="/editorial-policy" className="text-gold-400 hover:underline">editorial policy</Link>.
         </p>
       </div>
 
@@ -104,9 +104,9 @@ export default function AboutPage() {
       {/* Trust Signals */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 mb-8">
         {[
-          { icon: Award, val: "10K+", label: "Kundalis Generated" },
-          { icon: Star, val: "50+", label: "Expert Articles" },
-          { icon: Shield, val: "100%", label: "Privacy First" },
+          { icon: Award, val: "9", label: "Grahas Computed" },
+          { icon: Star, val: "27", label: "Nakshatras Covered" },
+          { icon: Shield, val: "Lahiri", label: "Ayanamsa Standard" },
           { icon: Zap, val: "0.01°", label: "Calculation Precision" },
         ].map((s) => (
           <div key={s.label} className="glass-card p-4 text-center">

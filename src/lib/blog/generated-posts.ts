@@ -6,6 +6,8 @@ interface BlogPost {
   category: string;
   readTime: string;
   content: string;
+  /** True for template-generated posts (kept for reference, excluded from the indexed blog). */
+  generated?: boolean;
 }
 
 // Zodiac deep-dive posts (12)
@@ -75,6 +77,7 @@ As a ${d.element} sign, ${d.sign} is most compatible with other ${d.element} sig
 The primary gemstone for ${d.sign} is associated with ${d.ruler}. Consult your [birth chart](/kundali) for personalized gemstone recommendations.
 
 Generate your [free Kundali](/kundali) to discover how ${d.sign} influences your specific birth chart, or check your [daily horoscope](/horoscope/${s}).`,
+    generated: true,
   };
 }
 
@@ -129,6 +132,7 @@ ${p.name} is strong when exalted, in its own sign, or in friendly signs. Check y
 The ${p.name} Mahadasha period lasts specific years and brings the planet's themes to the forefront. Results depend on ${p.name}'s dignity and house placement in your chart.
 
 Get your [free Kundali](/kundali) for a complete ${p.name} analysis including house placement, dignity, and Dasha periods.`,
+    generated: true,
   };
 }
 
@@ -178,6 +182,7 @@ The planet ruling the sign on the ${suffix} house cusp is called the ${suffix} h
 If the ${suffix} house is afflicted by malefics, consider: strengthening the house lord through gemstones, chanting the lord's Beej mantra, performing specific pujas, and charitable acts on the lord's day.
 
 Generate your [free Kundali](/kundali) to see which planets occupy your ${suffix} house and what results they produce.`,
+    generated: true,
   };
 }
 

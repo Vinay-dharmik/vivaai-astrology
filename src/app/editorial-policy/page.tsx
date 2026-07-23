@@ -115,6 +115,14 @@ export default function EditorialPolicyPage() {
           Where astrologers legitimately disagree — house systems, Ayanamsa choice, divisional chart conventions —
           we state which convention we use rather than presenting one school as universal fact.
         </p>
+        <p>
+          The <Link href="/horoscope" className="text-gold-400 hover:underline">daily horoscope</Link> is computed,
+          not written in advance. For each rashi we take the day&apos;s actual sidereal positions of the nine grahas,
+          determine which bhava each one occupies counted from that rashi, and apply the classical Gochara Phala
+          table from Brihat Parashara Hora Shastra to decide whether the transit is favourable. Sade Sati and the
+          Kantaka and Ashtama Shani positions are detected the same way. Each sign page publishes the full transit
+          table it used, so you can check the reading against the sky rather than take it on trust.
+        </p>
       </div>
 
       <div className="glass-card p-6 sm:p-8 space-y-4 text-sm text-[var(--text-secondary)] leading-relaxed mb-6">

@@ -1,88 +1,203 @@
-// Enhanced local horoscope generator — unique daily content per sign
-// Uses deterministic seeding so same day = same horoscope
+/**
+ * Daily horoscope built from the actual sky.
+ *
+ * Every sentence below is assembled from where the nine grahas genuinely are
+ * on the requested date, which bhava each one occupies counted from the
+ * reader's rashi, and whether that placement is favourable under classical
+ * Gochara rules. The Moon changes sign roughly every 2¼ days and the faster
+ * grahas move daily, so the reading changes for real reasons.
+ */
 
-const GENERAL = [
-  "The cosmic alignment today favors bold initiatives. Your energy levels are high, and it's a perfect time to start new projects or take decisive action. The planetary configuration suggests breakthroughs in long-pending matters.",
-  "Planetary energies bring clarity to decisions you've been postponing. Trust your inner guidance system today — it's more aligned with cosmic truth than usual. Important revelations may come through unexpected channels.",
-  "Today's stellar configuration supports creative expression and artistic endeavors. Your imagination is heightened, and ideas that seemed abstract may suddenly crystallize into actionable plans. Collaboration brings extra magic.",
-  "The celestial arrangement encourages deep introspection and self-discovery. Take time for meditation or journaling. Hidden aspects of situations may reveal themselves, giving you a strategic advantage in personal and professional matters.",
-  "Cosmic vibrations are particularly strong for manifesting your goals today. The alignment between inner planets creates a window of opportunity. Focus your intentions clearly and take concrete steps toward your dreams.",
-  "The universe aligns to support your authentic path of growth. Relationships receive cosmic blessings, and financial matters may see positive movement. Stay grounded while allowing flexibility in your approach.",
-  "Planetary movements create powerful opportunities for transformation and renewal. Old patterns may dissolve naturally, making space for fresh perspectives. Embrace change as a gateway to your next level of evolution.",
-];
+import { RASHI } from "./constants";
+import {
+  getSignTransitReading,
+  getTransits,
+  HOUSE_AREAS,
+  type SignTransitReading,
+  type TransitEffect,
+} from "./transits";
 
-const CAREER = [
-  "Focus on collaborative projects for maximum career impact today. Team synergy is strong, and joint efforts yield remarkable results.",
-  "A leadership opportunity may present itself unexpectedly. Be ready to step up and showcase your capabilities to decision-makers.",
-  "Financial decisions at work require extra careful analysis today. Review contracts and proposals thoroughly before committing.",
-  "Networking pays significant dividends today. Reach out to former colleagues or attend professional events for valuable connections.",
-  "Your creative ideas will gain unexpected traction with management. Present innovative solutions with confidence and data backing.",
-  "Patience in negotiations leads to considerably better outcomes. Don't rush agreements — time is on your side today.",
-  "A mentor figure or senior colleague may offer guidance that reshapes your career trajectory. Be receptive to wisdom from experience.",
-];
+const SIGN_SLUGS = RASHI.map((r) => r.english.toLowerCase());
 
-const LOVE = [
-  "Express feelings openly today — vulnerability builds deeper emotional connections. Your partner will appreciate authenticity and courage.",
-  "Quality time with loved ones strengthens emotional bonds significantly. Create memorable shared experiences through simple, heartfelt activities.",
-  "A heartfelt conversation has the power to resolve lingering misunderstandings. Choose words carefully and listen with empathy and patience.",
-  "Romance is beautifully highlighted in your chart today. Plan something special for your partner or be open to new romantic possibilities.",
-  "Focus on understanding your partner's perspective and love language today. Mutual respect creates the foundation for lasting happiness.",
-  "Self-love and personal care practices enhance your attractiveness and inner confidence. You can only give love fully when you love yourself first.",
-  "Family relationships benefit from extra attention and nurturing today. Resolve old conflicts with compassion and create healing spaces.",
-];
+/** How each graha behaves when its transit is going well / badly. */
+const TONE: Record<string, { good: string; hard: string }> = {
+  Sun: {
+    good: "brings recognition and the confidence to be visible",
+    hard: "can bruise the ego and put you at odds with people in authority",
+  },
+  Moon: {
+    good: "steadies the mind and makes people receptive to you",
+    hard: "unsettles the mood and makes small things feel larger than they are",
+  },
+  Mars: {
+    good: "supplies drive, stamina and the nerve to push a matter through",
+    hard: "shortens the temper and tempts you into avoidable conflict",
+  },
+  Mercury: {
+    good: "sharpens thinking, negotiation and anything involving paperwork",
+    hard: "muddles communication and makes details easy to miss",
+  },
+  Jupiter: {
+    good: "opens the way through guidance, goodwill and timely help",
+    hard: "encourages overreach and promises more than the situation can carry",
+  },
+  Venus: {
+    good: "eases relationships, comfort and matters of taste",
+    hard: "invites indulgence and blurs judgement in close relationships",
+  },
+  Saturn: {
+    good: "rewards patience, routine and work others avoid",
+    hard: "slows things down and asks for endurance before results",
+  },
+  Rahu: {
+    good: "favours the unconventional route and unfamiliar territory",
+    hard: "amplifies restlessness and makes shortcuts look better than they are",
+  },
+  Ketu: {
+    good: "sharpens insight and cuts attachment to what has run its course",
+    hard: "brings detachment or doubt where commitment is needed",
+  },
+};
 
-const HEALTH = [
-  "Morning meditation or mindfulness practice brings exceptional mental clarity and emotional balance. Even 10 minutes makes a profound difference today.",
-  "Physical activity significantly boosts your energy and mood today. Choose movement that brings you joy — dancing, walking in nature, or yoga.",
-  "Pay close attention to your nutritional choices today. What you eat directly affects your mental clarity and emotional equilibrium.",
-  "Rest and recovery are essential for maintaining your momentum. Don't push beyond healthy limits — sustainable energy beats burnout every time.",
-  "Outdoor activities and nature connection restore your mental and emotional balance powerfully today. Fresh air is medicine for the soul.",
-  "Hydration and mindful, conscious eating improve your vitality noticeably. Your body is particularly responsive to nurturing care today.",
-  "Yoga, stretching, or bodywork helps release accumulated physical tension and emotional stress. Your body holds wisdom — listen to its signals.",
-];
+/** Which houses feed which life area, for scoring. */
+const AREA_HOUSES = {
+  career: [10, 6, 11, 3],
+  love: [7, 5, 2, 4],
+  health: [1, 6, 8, 12],
+  finance: [2, 11, 9, 5],
+};
 
-const FINANCE = [
-  "Conservative financial decisions protect your long-term wealth today. Avoid impulsive purchases and focus on building your savings foundation.",
-  "An unexpected financial opportunity may surface. Evaluate it carefully but don't dismiss it — sometimes fortune favors the prepared mind.",
-  "Review your investment portfolio and financial goals today. Small adjustments now can lead to significant returns in the coming months.",
-  "Spending on self-development, education, or health is well-starred today. Investments in yourself always yield the highest returns.",
-  "Financial partnerships or joint ventures show positive potential. Ensure clear agreements and mutual understanding before proceeding.",
-  "Today favors paying off debts or clearing financial obligations. The energy supports liberation from financial burdens and fresh starts.",
-  "Multiple income streams deserve attention today. Your entrepreneurial instincts are sharp — explore side projects or passive income opportunities.",
-];
+function ordinal(n: number): string {
+  if (n === 1) return "1st";
+  if (n === 2) return "2nd";
+  if (n === 3) return "3rd";
+  return `${n}th`;
+}
 
-function seedHash(str: string): number {
-  let h = 0;
-  for (let i = 0; i < str.length; i++) {
-    h = ((h << 5) - h + str.charCodeAt(i)) | 0;
+/** Score an area 40–95 from how the grahas in those houses are placed. */
+function scoreArea(reading: SignTransitReading, houses: number[]): number {
+  let score = 62;
+  for (const e of reading.effects) {
+    if (!houses.includes(e.house)) continue;
+    const weight = houses.indexOf(e.house) === 0 ? 9 : 5;
+    score += e.favourable ? weight : -weight;
+    if (e.retrograde) score -= 2;
   }
-  return Math.abs(h);
+  if (reading.sadeSati) score -= 5;
+  return Math.max(40, Math.min(95, Math.round(score)));
 }
 
-function pick<T>(arr: T[], seed: number, offset: number = 0): T {
-  return arr[((seed >> offset) + offset) % arr.length];
+function areaLine(
+  reading: SignTransitReading,
+  houses: number[],
+  opening: string
+): string {
+  const relevant = reading.effects.filter((e) => houses.includes(e.house));
+  if (relevant.length === 0) {
+    return `${opening} No graha is transiting these houses from ${reading.signEnglish} today, so matters here move at their own pace rather than being pushed by a transit.`;
+  }
+  const parts = relevant.slice(0, 3).map((e) => {
+    const tone = TONE[e.body];
+    return `${e.body} in your ${ordinal(e.house)} (${HOUSE_AREAS[e.house]}) ${e.favourable ? tone.good : tone.hard}`;
+  });
+  return `${opening} ${parts.join("; ")}.`;
 }
 
-export function generateDailyHoroscope(sign: string, date: Date = new Date()) {
-  const dateStr = date.toISOString().split("T")[0];
-  const seed = seedHash(`${sign}-${dateStr}`);
+export interface DailyHoroscope {
+  date: string;
+  sign: string;
+  rashi: string;
+  lord: string;
+  general: string;
+  career: string;
+  love: string;
+  health: string;
+  finance: string;
+  moonSign: string;
+  moonHouse: number;
+  moonNakshatra: string;
+  retrogrades: string[];
+  sadeSati: SignTransitReading["sadeSati"];
+  shani: SignTransitReading["shani"];
+  /** Every transit, so the page can show its working. */
+  transitTable: TransitEffect[];
+  luckyNumber: number;
+  luckyColor: string;
+  mood: string;
+  loveScore: number;
+  careerScore: number;
+  healthScore: number;
+  financeScore: number;
+}
 
-  const colors = ["Gold", "Silver", "Royal Blue", "Emerald Green", "Purple", "White", "Coral", "Turquoise", "Rose Pink", "Amber"];
-  const moods = ["Energetic", "Reflective", "Optimistic", "Focused", "Creative", "Calm", "Adventurous", "Determined", "Inspired", "Grounded"];
+export function generateDailyHoroscope(
+  sign: string,
+  date: Date = new Date()
+): DailyHoroscope {
+  const signIndex = SIGN_SLUGS.indexOf(sign.toLowerCase());
+  const idx = signIndex >= 0 ? signIndex : 0;
+  const reading = getSignTransitReading(idx, date);
+  const rashi = RASHI[idx];
+
+  const moonT = getTransits(date).find((t) => t.body === "Moon")!;
+  const moon = reading.moon;
+
+  const strongest = reading.effects
+    .filter((e) => e.favourable && e.body !== "Moon")
+    .sort((a, b) => a.house - b.house)[0];
+  const hardest = reading.effects
+    .filter((e) => !e.favourable && e.body !== "Moon")
+    .sort((a, b) => a.house - b.house)[0];
+
+  const generalParts: string[] = [
+    `The Moon is in ${moon.signEnglish} today, which is the ${ordinal(moon.house)} house from ${rashi.english} — ${moon.area}. That is where your attention naturally goes.`,
+  ];
+  if (strongest) {
+    generalParts.push(
+      `${strongest.body} is transiting your ${ordinal(strongest.house)} house and is well placed there: it ${TONE[strongest.body].good}.`
+    );
+  }
+  if (hardest) {
+    generalParts.push(
+      `${hardest.body} in your ${ordinal(hardest.house)} house is the harder influence — it ${TONE[hardest.body].hard}, so leave margin around ${HOUSE_AREAS[hardest.house]}.`
+    );
+  }
+  if (reading.retrogrades.length) {
+    generalParts.push(
+      `${reading.retrogrades.join(" and ")} ${reading.retrogrades.length > 1 ? "are" : "is"} retrograde, which favours reviewing and finishing existing work over starting something new.`
+    );
+  }
+  if (reading.sadeSati) generalParts.push(reading.sadeSati.note);
+  else if (reading.shani) generalParts.push(reading.shani.note);
+
+  const luckyColors = ["Gold", "Silver", "Deep Red", "Emerald Green", "Saffron", "White", "Sky Blue", "Deep Blue", "Grey"];
+  const lordColorIdx = ["Sun", "Moon", "Mars", "Mercury", "Jupiter", "Venus", "Saturn", "Rahu", "Ketu"].indexOf(rashi.lord);
 
   return {
-    general: pick(GENERAL, seed, 0),
-    career: pick(CAREER, seed, 2),
-    love: pick(LOVE, seed, 4),
-    health: pick(HEALTH, seed, 6),
-    finance: pick(FINANCE, seed, 8),
-    luckyNumber: (seed % 9) + 1,
-    luckyColor: pick(colors, seed, 3),
-    mood: pick(moods, seed, 5),
-    intensity: (seed % 25) + 75, // 75-99%
-    loveScore: (seed % 20) + 75,
-    careerScore: ((seed >> 2) % 20) + 75,
-    healthScore: ((seed >> 4) % 20) + 75,
-    financeScore: ((seed >> 6) % 20) + 75,
+    date: date.toISOString().split("T")[0],
+    sign: rashi.english,
+    rashi: rashi.name,
+    lord: rashi.lord,
+    general: generalParts.join(" "),
+    career: areaLine(reading, AREA_HOUSES.career, "Career today is shaped by what sits in your 10th, 6th, 11th and 3rd houses."),
+    love: areaLine(reading, AREA_HOUSES.love, "For relationships, look at your 7th, 5th, 2nd and 4th houses."),
+    health: areaLine(reading, AREA_HOUSES.health, "Health follows the 1st, 6th, 8th and 12th houses from your sign."),
+    finance: areaLine(reading, AREA_HOUSES.finance, "Money matters track your 2nd, 11th, 9th and 5th houses."),
+    moonSign: moon.signEnglish,
+    moonHouse: moon.house,
+    moonNakshatra: moonT.nakshatra,
+    retrogrades: reading.retrogrades,
+    sadeSati: reading.sadeSati,
+    shani: reading.shani,
+    transitTable: reading.effects,
+    // Derived from the chart, not from a hash: the Moon's house is the day's
+    // fastest-changing marker, and the lucky colour follows the rashi lord.
+    luckyNumber: ((moon.house + idx) % 9) + 1,
+    luckyColor: luckyColors[lordColorIdx >= 0 ? lordColorIdx : 0],
+    mood: moon.favourable ? "Settled" : "Restless",
+    loveScore: scoreArea(reading, AREA_HOUSES.love),
+    careerScore: scoreArea(reading, AREA_HOUSES.career),
+    healthScore: scoreArea(reading, AREA_HOUSES.health),
+    financeScore: scoreArea(reading, AREA_HOUSES.finance),
   };
 }

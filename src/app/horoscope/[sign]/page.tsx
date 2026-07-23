@@ -11,20 +11,6 @@ const SYMBOLS: Record<string, string> = {
   libra: "♎", scorpio: "♏", sagittarius: "♐", capricorn: "♑", aquarius: "♒", pisces: "♓",
 };
 
-const SIGN_DETAILS: Record<string, string> = {
-  aries: "As an Aries, your ruling planet Mars energizes your drive and ambition. Today's planetary alignment activates your house of career and public image, bringing opportunities for leadership. Your natural courage serves you well in bold decisions. Trust your instincts but channel impulsive energy into constructive action. This is an excellent period for initiating new ventures and establishing your authority.",
-  taurus: "Venus, your ruling planet, brings harmony to your material and emotional world today. Stability is your superpower — use it to build lasting foundations. Financial matters look favorable for long-term investments. Your patience and determination attract reliable opportunities. Creative pursuits and aesthetic projects receive cosmic support, making this ideal for beautifying your surroundings.",
-  gemini: "Mercury sharpens your already brilliant communication skills today. Your adaptability allows you to navigate complex situations with ease. Intellectual pursuits and networking bring unexpected rewards. Stay curious but avoid spreading yourself too thin across too many projects. This is a powerful time for writing, teaching, learning, and connecting with like-minded people.",
-  cancer: "The Moon illuminates your emotional intelligence today. Your nurturing nature creates safe spaces for meaningful connections. Home and family matters benefit from your attention. Trust your powerful intuition — it rarely leads you astray. Domestic improvements and family gatherings are especially blessed. Real estate matters may also see positive movement.",
-  leo: "The Sun amplifies your natural charisma and creative energy today. You shine brightest when you lead with authenticity and generosity. Creative projects receive cosmic support. Your warm presence inspires confidence in those around you. Public speaking, performances, and self-expression are especially favored. Children and romantic interests bring joy.",
-  virgo: "Mercury enhances your analytical precision and practical wisdom today. Your attention to detail uncovers solutions others miss. Health and wellness routines bring tangible improvements. Service to others creates fulfilling karma cycles. Organization and planning are your superpowers today. Technical skills and problem-solving abilities are at their peak.",
-  libra: "Venus graces your relationships with beauty and understanding today. Your diplomatic skills resolve tensions and build bridges. Artistic pursuits flow naturally. Balance between giving and receiving creates sustainable happiness. Legal matters and partnerships receive positive cosmic energy. Aesthetic choices and design decisions are especially inspired.",
-  scorpio: "Mars and Pluto deepen your transformative power today. Your investigative nature uncovers valuable hidden truths. Emotional depth creates profound connections. Financial matters tied to shared resources show promising developments. Research, psychology, and deep analysis yield breakthrough insights. Let go of what no longer serves your growth.",
-  sagittarius: "Jupiter expands your horizons with wisdom and adventure today. Your optimistic spirit attracts positive experiences and people. Learning and philosophical exploration bring joy. Travel plans or educational goals receive cosmic blessings. International connections and cultural experiences are especially meaningful. Teaching and sharing knowledge multiplies your fortune.",
-  capricorn: "Saturn rewards your disciplined approach with tangible recognition today. Your ambition and work ethic create lasting achievements. Authority figures notice your dedication. Long-term career goals take significant steps forward. Structural planning and strategic decisions are especially well-supported. Your reputation in professional circles grows stronger.",
-  aquarius: "Saturn and Uranus combine innovation with practicality today. Your unique perspective creates breakthrough solutions for collective challenges. Networking brings unexpected but valuable connections. Humanitarian instincts guide meaningful choices. Technology projects and group collaborations are especially favored. Your vision for the future becomes clearer.",
-  pisces: "Jupiter and Neptune amplify your compassion and spiritual awareness today. Creative and artistic expressions flow effortlessly. Your intuitive gifts are especially strong — trust the subtle guidance you receive. Meditation and reflection bring profound insights. Music, art, and spiritual practices are deeply fulfilling. Healing work benefits from cosmic support.",
-};
 
 interface PageProps {
   params: Promise<{ sign: string }>;
@@ -45,6 +31,10 @@ export function generateStaticParams() {
   return Object.keys(ZODIAC_INFO).map((sign) => ({ sign }));
 }
 
+// The reading is computed from live planetary positions, so the page has to be
+// rebuilt as the sky moves. Hourly keeps the Moon's sign change accurate.
+export const revalidate = 3600;
+
 export default async function ZodiacHoroscopePage({ params }: PageProps) {
   const { sign } = await params;
   const info = ZODIAC_INFO[sign];
@@ -54,7 +44,6 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
   const isoDate = today.toISOString().split("T")[0];
   const dateStr = today.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
   const d = generateDailyHoroscope(sign, today);
-  const detail = SIGN_DETAILS[sign] || "";
   const cap = sign.charAt(0).toUpperCase() + sign.slice(1);
 
   // Article schema with today's date drives freshness/repeat crawling
@@ -73,7 +62,7 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
     "@context": "https://schema.org",
     "@type": "FAQPage",
     mainEntity: [
-      { "@type": "Question", name: `What is the ${cap} horoscope for today?`, acceptedAnswer: { "@type": "Answer", text: `${d.general} ${detail}` } },
+      { "@type": "Question", name: `What is the ${cap} horoscope for today?`, acceptedAnswer: { "@type": "Answer", text: d.general } },
       { "@type": "Question", name: `What is the lucky number for ${cap} today?`, acceptedAnswer: { "@type": "Answer", text: `Today's lucky number for ${cap} is ${d.luckyNumber} and the lucky color is ${d.luckyColor}.` } },
       { "@type": "Question", name: `Which planet rules ${cap}?`, acceptedAnswer: { "@type": "Answer", text: `${cap} is ruled by ${info.ruling}.` } },
     ],
@@ -107,7 +96,11 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
         <div>
           <h2 className="text-xs text-gold-200 uppercase tracking-wider font-semibold mb-3">Today&apos;s Prediction</h2>
           <p className="text-[var(--text-secondary)] leading-relaxed mb-3">{d.general}</p>
-          <p className="text-[var(--text-secondary)] leading-relaxed">{detail}</p>
+          <p className="text-xs text-[var(--text-muted)] leading-relaxed">
+            Moon is in {d.moonSign} ({d.moonNakshatra} Nakshatra), the {d.moonHouse}
+            {d.moonHouse === 1 ? "st" : d.moonHouse === 2 ? "nd" : d.moonHouse === 3 ? "rd" : "th"} house from {cap}.
+            {d.retrogrades.length > 0 && ` Retrograde today: ${d.retrogrades.join(", ")}.`}
+          </p>
         </div>
 
         {/* Category predictions */}
@@ -118,15 +111,53 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
           <CategoryCard emoji="💰" title="Finance" text={d.finance} score={d.financeScore} />
         </div>
 
-        {/* Intensity bar */}
+        {/* Where these predictions come from — the actual transits today */}
         <div className="pt-4 border-t border-[var(--border)]">
-          <div className="flex items-center justify-between text-xs text-[var(--text-muted)] mb-2">
-            <span>Overall Cosmic Intensity</span>
-            <span className="text-gold-400 font-semibold">{d.intensity}%</span>
+          <h2 className="text-xs text-gold-200 uppercase tracking-wider font-semibold mb-3">
+            Today&apos;s Transits from {cap}
+          </h2>
+          <p className="text-xs text-[var(--text-muted)] mb-3">
+            Sidereal positions (Lahiri Ayanamsa) for {dateStr}, with the bhava each graha
+            occupies counted from {cap}. Every prediction above is derived from this table.
+          </p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-xs">
+              <thead>
+                <tr className="text-gold-200 border-b border-gold-400/20">
+                  <th className="text-left py-2 pr-3 font-semibold">Graha</th>
+                  <th className="text-left py-2 pr-3 font-semibold">Rashi</th>
+                  <th className="text-left py-2 pr-3 font-semibold">House</th>
+                  <th className="text-left py-2 font-semibold">Gochara</th>
+                </tr>
+              </thead>
+              <tbody>
+                {d.transitTable.map((t) => (
+                  <tr key={t.body} className="border-b border-white/5">
+                    <td className="py-1.5 pr-3 text-white whitespace-nowrap">
+                      {t.body}{t.retrograde && <span className="text-red-400 ml-1" title="Retrograde">℞</span>}
+                    </td>
+                    <td className="py-1.5 pr-3 text-[var(--text-secondary)]">{t.signEnglish}</td>
+                    <td className="py-1.5 pr-3 text-[var(--text-secondary)]">{t.house}</td>
+                    <td className={`py-1.5 ${t.favourable ? "text-mystic-green" : "text-[var(--text-muted)]"}`}>
+                      {t.favourable ? "Favourable" : "Testing"}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
-          <div className="h-2.5 bg-white/10 rounded-full overflow-hidden">
-            <div className="h-full bg-gradient-to-r from-gold-400 to-gold-500 rounded-full" style={{ width: `${d.intensity}%` }} />
-          </div>
+          {d.sadeSati && (
+            <div className="mt-4 p-3 rounded-lg bg-red-400/5 border border-red-400/20">
+              <div className="text-xs font-semibold text-red-400 mb-1">Sade Sati — {d.sadeSati.phase}</div>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{d.sadeSati.note}</p>
+            </div>
+          )}
+          {!d.sadeSati && d.shani && (
+            <div className="mt-4 p-3 rounded-lg bg-gold-400/5 border border-gold-400/20">
+              <div className="text-xs font-semibold text-gold-200 mb-1">{d.shani.label}</div>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed">{d.shani.note}</p>
+            </div>
+          )}
         </div>
       </div>
 

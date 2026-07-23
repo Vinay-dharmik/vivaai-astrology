@@ -1,4 +1,11 @@
 import { NAKSHATRAS, NAK_LORDS } from "./constants";
+import {
+  GANA_BY_INDEX,
+  YONI_BY_INDEX,
+  NADI_BY_INDEX,
+  DEITY_BY_INDEX,
+  SYMBOL_BY_INDEX,
+} from "./nakshatraProfiles";
 
 // ── Nakshatra detailed data ──────────────────────
 
@@ -14,55 +21,19 @@ export interface NakshatraInfo {
   quality: string;
 }
 
-const GANAS: ("Deva" | "Manushya" | "Rakshasa")[] = [
-  "Deva","Manushya","Rakshasa","Manushya","Deva","Manushya",
-  "Deva","Deva","Rakshasa","Rakshasa","Manushya","Manushya",
-  "Deva","Rakshasa","Deva","Rakshasa","Deva","Rakshasa",
-  "Rakshasa","Deva","Manushya","Deva","Rakshasa","Rakshasa",
-  "Manushya","Manushya","Deva",
-];
-
-const YONIS = [
-  "Horse","Elephant","Goat","Serpent","Serpent","Dog",
-  "Cat","Goat","Cat","Rat","Rat","Cow",
-  "Buffalo","Tiger","Buffalo","Tiger","Deer","Deer",
-  "Dog","Monkey","Mongoose","Monkey","Lion","Horse",
-  "Lion","Cow","Elephant",
-];
-
-const NADIS: ("Aadi" | "Madhya" | "Antya")[] = [
-  "Aadi","Madhya","Antya","Antya","Madhya","Aadi",
-  "Aadi","Madhya","Antya","Antya","Madhya","Aadi",
-  "Aadi","Madhya","Antya","Antya","Madhya","Aadi",
-  "Aadi","Madhya","Antya","Antya","Madhya","Aadi",
-  "Aadi","Madhya","Antya",
-];
-
-const DEITIES = [
-  "Ashwini Kumaras","Yama","Agni","Brahma","Soma","Rudra",
-  "Aditi","Brihaspati","Nagas","Pitris","Bhaga","Aryaman",
-  "Savitar","Tvashtar","Vayu","Indra-Agni","Mitra","Indra",
-  "Nirrti","Apas","Vishvadevas","Vishnu","Vasu","Varuna",
-  "Aja Ekapada","Ahir Budhnya","Pushan",
-];
-
-const SYMBOLS = [
-  "Horse Head","Yoni","Razor","Chariot","Deer Head","Teardrop",
-  "Bow","Flower","Coiled Snake","Throne","Hammock","Bed",
-  "Fist","Pearl","Coral","Archway","Lotus","Earring",
-  "Elephant Goad","Fan","Elephant Tusk","Ear","Drum","Circle",
-  "Sword","Twin","Fish",
-];
+// Attributes come from the shared Nakshatra profiles so there is exactly one
+// classical table on the site. These used to be duplicated here and on the
+// detail page, and the two copies disagreed with each other.
 
 export const NAKSHATRA_DATA: NakshatraInfo[] = NAKSHATRAS.map((n, i) => ({
   name: n,
   lord: NAK_LORDS[i],
-  deity: DEITIES[i],
-  gana: GANAS[i],
-  yoni: YONIS[i],
-  nadi: NADIS[i],
+  deity: DEITY_BY_INDEX[i],
+  gana: GANA_BY_INDEX[i],
+  yoni: YONI_BY_INDEX[i],
+  nadi: NADI_BY_INDEX[i],
   element: ["Fire","Earth","Air","Water"][i % 4],
-  symbol: SYMBOLS[i],
+  symbol: SYMBOL_BY_INDEX[i],
   quality: ["Kshipra","Ugra","Mridu","Tikshna","Sthira","Chara","Dhruva"][i % 7],
 }));
 

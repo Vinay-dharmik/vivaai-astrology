@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
+import { KundaliChart } from "./KundaliChart";
 import type { KundaliData } from "./KundaliForm";
 
 declare global {
@@ -144,6 +145,12 @@ export function KundaliResult({ data }: { data: KundaliData }) {
 
       {/* Birth Chart Summary — FREE */}
       <Section title="Birth Chart Summary" badge="FREE">
+        <div className="mb-6">
+          <KundaliChart
+            houses={data.houses}
+            lagnaSignIndex={["Mesha","Vrishabha","Mithuna","Karka","Simha","Kanya","Tula","Vrischika","Dhanu","Makara","Kumbha","Meena"].indexOf(data.houses.find(x => x.house === 1)?.sign || "Mesha")}
+          />
+        </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <Card label="Lagna (Ascendant)" value={`${data.lagna.name} (${data.lagna.english})`} sub={`Lord: ${data.lagna.lord} • ${data.lagna.degree.toFixed(1)}°`} />
           <Card label="Moon Sign (Rashi)" value={`${data.moonSign.name} (${data.moonSign.english})`} sub={`Lord: ${data.moonSign.lord}`} />

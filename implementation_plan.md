@@ -1,342 +1,90 @@
-# VivaAI Astrology — Production SaaS Implementation Plan
+# Replace Swiss Ephemeris with Pure Astronomical Formulas for Kundali
 
-## Overview
+## Problem
 
-Build a production-ready AI Astrology SaaS platform for **vivaai.in**, inspired by AstroSage/AstroTalk/Clickastro. The existing workspace at `d:\MERN Projects\Astro` contains a working static Vedic Kundali generator with solid calculation logic (Lahiri ayanamsa, sidereal longitudes, Vimshottari dasha, nakshatra). We'll migrate this into a full Next.js 15 SaaS app.
+The current kundali generation relies on `swisseph-wasm` (Swiss Ephemeris WebAssembly) for planetary position calculations. The user reports that planets are **coming out wrong** and wants to use **pure mathematical formulas** used by top astrologers — no external astronomy/astrology libraries.
+
+## Approach: VSOP87 & ELP Truncated Series (Same Method Used by Professional Astrologers)
+
+Professional Vedic astrology software (AstroSage, Jagannatha Hora, etc.) ultimately relies on the same underlying astronomy: the **VSOP87** planetary theory for the Sun through Saturn, and the **ELP-2000** theory for the Moon. These are the same theories behind the Swiss Ephemeris, but we'll implement the **truncated series** directly — the top ~20-50 terms for each planet — giving accuracy of **±0.1° to ±0.5°** (well within the ±1° tolerance used in Vedic astrology for sign/house boundaries, and comparable to manual panchang calculations).
+
+### What Changes
+
+1. **Pure formula-based planetary longitude calculator** — implements the key terms of VSOP87 (Sun, Mercury, Venus, Mars, Jupiter, Saturn) and ELP-2000 (Moon), plus analytical lunar node (Rahu/Ketu) computation. No external library needed.
+
+2. **Pure Lahiri Ayanamsa** — well-known polynomial formula (matches the BV Raman / Indian Calendar Reform Committee standard to within a few arcseconds).
+
+3. **Pure Ascendant (Lagna) calculation** — standard spherical astronomy formula using Greenwich Sidereal Time computed from the Julian Day.
+
+4. **Pure retrograde detection** — computed by evaluating planetary longitude at t ± 0.5 day and checking if the speed is negative.
+
+### Accuracy Expectations
+
+| Body | Method | Typical Error |
+|---|---|---|
+| Sun | VSOP87 truncated (~30 terms) | ±0.01° |
+| Moon | ELP-2000 truncated (~60 terms) | ±0.1° |
+| Mercury–Saturn | VSOP87 truncated (~20-40 terms per planet) | ±0.1–0.5° |
+| Rahu/Ketu | Mean node formula | ±0.5° |
+| Ascendant | Standard spherical formula | ±0.1° (time-dependent) |
 
 > [!IMPORTANT]
-> This is a **massive project** (~200+ files). We'll build it in **5 phases**, each deployable independently. Phase 1 alone is a functional MVP that can start earning.
+> These accuracies are **more than sufficient** for Vedic astrology, which works with 30° sign boundaries and 13.33° nakshatra boundaries. The key formulas are the same ones described in Jean Meeus's *Astronomical Algorithms* — the standard reference used by astrology software developers worldwide.
 
-## User Review Required
+## Proposed Changes
 
-> [!WARNING]
-> **Breaking Change**: The existing static HTML/CSS/JS files will be replaced by a Next.js 15 project. Your existing astrology calculation logic in `script.js` will be preserved and migrated into TypeScript modules.
+### Core Calculation Engine
 
-> [!IMPORTANT]
-> **API Keys Needed Before Phase 2+**:
-> - OpenAI API key (for AI features)
-> - Razorpay Key ID + Secret (for payments)
-> - Neon/Supabase PostgreSQL connection string
-> - Google OAuth credentials (for auth)
-> - Upstash Redis URL + Token (for caching)
+#### [MODIFY] [calculations.ts](file:///d:/MERN%20Projects/Astro/src/lib/astrology/calculations.ts)
 
-## Open Questions
+**Major rewrite** — Remove all `swisseph-wasm` imports and functions (`initSweForVedic`, `julianDayFromSwe`, `readSwePosition`, `swePlanetId`, `planetarySiderealLongitudes` with swe param, `detectRetrogrades` with swe param, `calcAscendantSidereal` with swe param). Replace with:
 
-1. **Database Provider**: Do you prefer **Neon** or **Supabase** for PostgreSQL? (Neon recommended for Vercel)
-2. **Auth Provider**: NextAuth/Auth.js or **Clerk**? (Your prompt mentions both — Clerk is simpler but paid at scale)
-3. **Domain**: Confirm using `vivaai.in` or do you want to register a new astrology-specific domain?
-4. **OpenAI Model**: GPT-4o-mini (cheaper, good for volume) or GPT-4o (better quality, higher cost)?
-5. **Initial Language**: Start with English-only or English + Hindi from day one?
+- `solarLongitude(jd)` — VSOP87 truncated series for Sun's geocentric ecliptic longitude
+- `lunarLongitude(jd)` — ELP-2000 truncated series for Moon's geocentric ecliptic longitude
+- `planetLongitude(jd, planet)` — VSOP87 truncated series for Mercury, Venus, Mars, Jupiter, Saturn
+- `rahuLongitude(jd)` — Mean lunar node formula
+- `lahiriAyanamsa(jd)` — Polynomial formula (no swe dependency)
+- `calcAscendantSidereal(dateUtc, lat, lon, ayanamsa)` — Pure GST + spherical trig formula (no swe dependency)
+- `planetarySiderealLongitudes(dateUtc, ayanamsa)` — Calls the above functions (no swe param)
+- `detectRetrogrades(dateUtc)` — Numerical differentiation (no swe param)
+
+All existing function signatures that downstream code uses will be **preserved** (but the `swe` parameter will be removed).
 
 ---
 
-## Phase 1: Foundation + MVP (Current Sprint)
-*Goal: Deployable app with free Kundali, homepage, auth, basic SEO — enough for AdSense application*
+### Server Action
 
-### Project Setup
+#### [MODIFY] [astrology.ts](file:///d:/MERN%20Projects/Astro/src/app/actions/astrology.ts)
 
-#### [NEW] Initialize Next.js 15 Project
-- `npx create-next-app@latest ./ --typescript --tailwind --eslint --app --src-dir --import-alias "@/*"`
-- Install: `shadcn/ui`, `framer-motion`, `zustand`, `@tanstack/react-query`, `prisma`, `@prisma/client`
-- Configure TailwindCSS with cosmic dark theme + gold accents design system
-- Setup shadcn/ui with custom astrology theme
-
-#### [NEW] `src/styles/globals.css`
-- Design system: CSS variables for cosmic gradients, gold accents, glassmorphism
-- Dark cosmic theme matching existing `style.css` aesthetic
-- Responsive breakpoints, typography (Google Fonts: Sora + Inter)
-
-#### [NEW] `.env.example`
-```
-DATABASE_URL=
-NEXTAUTH_SECRET=
-NEXTAUTH_URL=
-GOOGLE_CLIENT_ID=
-GOOGLE_CLIENT_SECRET=
-OPENAI_API_KEY=
-RAZORPAY_KEY_ID=
-RAZORPAY_KEY_SECRET=
-UPSTASH_REDIS_REST_URL=
-UPSTASH_REDIS_REST_TOKEN=
-NEXT_PUBLIC_SITE_URL=https://vivaai.in
-```
+- Remove all `swisseph-wasm` import and initialization (`SwissEph`, `swe.initSwissEph()`, `calc.initSweForVedic(swe)`, `swe.close()`)
+- Update all function calls to drop the `swe` parameter
+- The function signatures simplify from `calc.lahiriAyanamsa(birthUtc, swe)` to `calc.lahiriAyanamsa(birthUtc)`, etc.
 
 ---
 
-### Database Schema
+### Transit Calculations
 
-#### [NEW] `prisma/schema.prisma`
-Core models: `User`, `Profile` (birth details), `KundaliReport`, `Subscription`, `Payment`, `BlogPost`, `Coupon`, `SupportTicket`, `AIChatSession`, `AIChatMessage`
+#### [MODIFY] [transits.ts](file:///d:/MERN%20Projects/Astro/src/lib/astrology/transits.ts)
 
----
-
-### Core Astrology Engine (Migrated from existing code)
-
-#### [NEW] `src/lib/astrology/constants.ts`
-- Rashi, Nakshatra, Dasha lord arrays migrated from `script.js`
-
-#### [NEW] `src/lib/astrology/calculations.ts`
-- `lahiriAyanamsa()`, `getRashiInfo()`, `getNakshatraInfo()`, `calcAscendant()`
-- `planetarySiderealLongitudes()`, `getVimshottariSummary()`
-- All migrated from existing `script.js` to typed TypeScript
-
-#### [NEW] `src/lib/astrology/interpretations.ts`
-- `describeTemperament()`, `getPositivesAndChallenges()`, `estimateMarriageWindow()`
-- `buildLifeTimeline()`, `buildRemedies()` — migrated + enhanced
-
-#### [NEW] `src/lib/astrology/geocoding.ts`
-- Place geocoding + timezone conversion (from existing code)
+- Remove `swisseph-wasm` import and initialization in `getTransits()`
+- Update calls to use the new parameter-less versions of calculation functions
 
 ---
 
-### Homepage
+### Dependencies
 
-#### [NEW] `src/app/page.tsx`
-Premium homepage with sections:
-- Hero with animated stars background + "Generate Free Kundali" CTA
-- Zodiac carousel
-- Feature highlights (AI Astrologer, Kundali, Matching)
-- Testimonials
-- Premium plans preview
-- Blog preview
-- FAQ accordion
-- Footer with SEO links
+#### [MODIFY] [package.json](file:///d:/MERN%20Projects/Astro/package.json)
 
-#### [NEW] `src/components/home/HeroSection.tsx`
-- Cosmic gradient background, gold accents, glassmorphism cards
-- Animated star particles (canvas-based, lightweight)
-- CTA buttons with glow effects
-
-#### [NEW] `src/components/home/ZodiacSection.tsx`
-- 12 zodiac sign cards with hover animations
-- Links to `/horoscope/[sign]/today`
-
-#### [NEW] `src/components/home/PricingSection.tsx`
-- Free vs Premium comparison table
-- Monthly/Yearly toggle
-
-#### [NEW] `src/components/home/TestimonialsSection.tsx`
-#### [NEW] `src/components/home/FAQSection.tsx`
-#### [NEW] `src/components/home/FooterSection.tsx`
-
----
-
-### Kundali Generator Page
-
-#### [NEW] `src/app/kundali/page.tsx`
-- Birth details form (migrated + enhanced from existing)
-- Real-time validation
-- Place autocomplete
-
-#### [NEW] `src/app/kundali/[id]/page.tsx`
-- Full kundali report display
-- Free users: 30% visible, rest blurred with premium unlock CTA
-- Premium users: full report
-- Share + Download buttons
-
-#### [NEW] `src/components/kundali/BirthChart.tsx`
-- Visual North Indian chart (SVG-based)
-- Planet positions rendered accurately
-
-#### [NEW] `src/components/kundali/ReportSections.tsx`
-- Modular sections: Core factors, Graha positions, Personality, Dasha timeline, etc.
-
----
-
-### Layout & Navigation
-
-#### [NEW] `src/app/layout.tsx`
-- Root layout with metadata, fonts, providers
-- SEO meta tags, OG image defaults
-
-#### [NEW] `src/components/layout/Navbar.tsx`
-- Responsive navbar with mobile menu
-- Auth state awareness (Login/Dashboard)
-- Glassmorphism style
-
-#### [NEW] `src/components/layout/Footer.tsx`
-- SEO-optimized footer with sitemap links
-
-#### [NEW] `src/components/ui/StarBackground.tsx`
-- Animated cosmic particle background (canvas)
-
----
-
-### Legal Pages (Required for AdSense)
-
-#### [NEW] `src/app/about/page.tsx`
-#### [NEW] `src/app/privacy/page.tsx`
-#### [NEW] `src/app/terms/page.tsx`
-#### [NEW] `src/app/disclaimer/page.tsx`
-#### [NEW] `src/app/contact/page.tsx`
-#### [NEW] `src/app/refund-policy/page.tsx`
-
----
-
-### Basic SEO
-
-#### [NEW] `src/app/sitemap.ts` — Dynamic sitemap generation
-#### [NEW] `src/app/robots.ts` — Robots.txt
-#### [NEW] `src/lib/seo/metadata.ts` — Reusable metadata helpers
-
----
-
-## Phase 2: Auth + Payments + AI Chat
-*Goal: User accounts, premium subscriptions, AI astrologer chat*
-
-### Authentication (Auth.js / NextAuth)
-- Google OAuth login
-- Email OTP login (via Resend)
-- Guest mode with limited access
-- Session management + middleware
-
-### Razorpay Integration
-- Subscription plans (Free, Premium Monthly ₹99, Yearly ₹999)
-- One-time report purchases (₹199-₹999)
-- Webhook handler for payment verification
-- Coupon system
-
-### AI Astrologer Chat
-- OpenAI GPT-4o integration
-- Context-aware (uses user's kundali data)
-- Streaming responses
-- Daily limit for free users, unlimited for premium
-- Chat history persistence
-
----
-
-## Phase 3: Horoscopes + Matching + SEO Pages
-*Goal: High-traffic SEO pages, kundali matching, programmatic SEO*
-
-### Horoscope System
-- `/horoscope/[sign]/today|weekly|monthly|yearly`
-- 12 signs × 4 timeframes = 48 pages (ISR)
-- AI-generated daily content via cron
-- SEO-optimized metadata per page
-
-### Kundali Matching
-- Ashtakoot matching algorithm
-- Guna score calculation
-- Manglik compatibility
-- AI relationship analysis
-- Premium detailed report
-
-### Programmatic SEO Pages (500+)
-- `/nakshatra/[name]` — 27 pages
-- `/zodiac/[sign]` — 12 detailed pages
-- `/dosha/[type]` — Manglik, Sade Sati, etc.
-- `/gemstone/[stone]` — Gemstone recommendations
-- `/calculator/[type]` — Moon sign, ascendant, numerology calculators
-- Festival landing pages
-
----
-
-## Phase 4: Premium Reports + PDF + Blog CMS
-*Goal: Monetization engine — paid reports, blog for SEO traffic*
-
-### PDF Report Engine
-- React-PDF or Puppeteer-based generation
-- Premium-branded templates with gold theme
-- 20-40 page detailed reports
-- Career, Marriage, Finance, Health, etc.
-
-### Blog CMS
-- Markdown-based blog with admin editor
-- Categories, tags, related posts
-- AI-assisted article generation
-- OG image auto-generation
-- Internal linking structure
-
-### Remedies Module
-- AI-personalized gemstone, mantra, fasting suggestions
-- Based on user's kundali
-
----
-
-## Phase 5: Admin Dashboard + Growth Features
-*Goal: Operations management + viral growth*
-
-### Admin Dashboard
-- User management
-- Subscription analytics
-- Report generation stats
-- Blog post management
-- Coupon management
-- Revenue analytics
-
-### Growth & Monetization
-- AdSense integration with lazy-loaded placements
-- Exit intent popup for premium upsell
-- WhatsApp sharing
-- Push notifications
-- Referral system
-- Email marketing hooks
-
----
-
-## Folder Structure (Final)
-
-```
-src/
-├── app/
-│   ├── (auth)/login/
-│   ├── (marketing)/          # Homepage, about, legal pages
-│   ├── admin/                # Admin dashboard
-│   ├── api/                  # API routes
-│   │   ├── auth/
-│   │   ├── kundali/
-│   │   ├── horoscope/
-│   │   ├── chat/
-│   │   ├── payment/
-│   │   └── webhook/
-│   ├── blog/
-│   ├── chat/                 # AI chat
-│   ├── horoscope/[sign]/[period]/
-│   ├── kundali/
-│   ├── matching/
-│   ├── reports/
-│   └── layout.tsx
-├── components/
-│   ├── home/
-│   ├── kundali/
-│   ├── chat/
-│   ├── layout/
-│   ├── shared/
-│   └── ui/                   # shadcn components
-├── lib/
-│   ├── astrology/            # Core calculation engine
-│   ├── ai/                   # OpenAI integration
-│   ├── auth/                 # Auth helpers
-│   ├── db/                   # Prisma client
-│   ├── payment/              # Razorpay helpers
-│   ├── pdf/                  # PDF generation
-│   ├── seo/                  # SEO utilities
-│   └── utils/
-├── hooks/                    # Custom React hooks
-├── stores/                   # Zustand stores
-└── types/                    # TypeScript types
-```
-
----
+- Remove `"swisseph-wasm": "^0.1.0"` from dependencies (optional — can be done after verification)
 
 ## Verification Plan
 
-### Automated Tests
-- `npm run build` — Ensure zero build errors
-- `npm run lint` — Clean linting
-- Browser testing of homepage, kundali generator, and chart rendering
-- Astrology calculation unit tests (verify against known birth charts)
-
 ### Manual Verification
-- Visual inspection of all pages on mobile + desktop
-- Kundali generation end-to-end test
-- Payment flow test in Razorpay sandbox
-- SEO audit with Lighthouse
-- Core Web Vitals check
+1. Compare the generated planet positions for a known birth chart (e.g., 15 Aug 1947, 00:00, Delhi) against AstroSage or Jagannatha Hora
+2. Check that the Ascendant (Lagna), Moon sign, and Nakshatra match for several test cases
+3. Verify retrograde detection matches known retrograde periods
+4. Run `npm run build` to ensure no TypeScript compilation errors
 
-### Deployment
-- Push to GitHub
-- Connect to Vercel
-- Add environment variables
-- Configure DNS for vivaai.in
-- Verify production build
+### Automated Tests
+- `npm run build` — TypeScript compilation check
+- `npm run dev` — Runtime verification

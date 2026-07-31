@@ -130,16 +130,17 @@ export interface DailyHoroscope {
   financeScore: number;
 }
 
-export function generateDailyHoroscope(
+export async function generateDailyHoroscope(
   sign: string,
   date: Date = new Date()
-): DailyHoroscope {
+): Promise<DailyHoroscope> {
   const signIndex = SIGN_SLUGS.indexOf(sign.toLowerCase());
   const idx = signIndex >= 0 ? signIndex : 0;
-  const reading = getSignTransitReading(idx, date);
+  const reading = await getSignTransitReading(idx, date);
   const rashi = RASHI[idx];
 
-  const moonT = getTransits(date).find((t) => t.body === "Moon")!;
+  const transits = await getTransits(date);
+  const moonT = transits.find((t) => t.body === "Moon")!;
   const moon = reading.moon;
 
   const strongest = reading.effects

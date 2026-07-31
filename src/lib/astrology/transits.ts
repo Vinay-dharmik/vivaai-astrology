@@ -1,14 +1,8 @@
 /**
  * Real planetary transits (Gochara) for a given date.
- *
- * This replaces the previous approach of hashing the sign name and date to
- * pick from a fixed pool of sentences. Everything below is derived from the
- * actual sidereal position of the nine grahas on the day in question, so a
- * "daily horoscope" changes because the sky changed, not because the date
- * string changed.
+ * Derived from the actual sidereal position of the nine grahas on the day in question.
  */
 
-import * as Astronomy from "astronomy-engine";
 import { RASHI, BODY_ORDER, NAKSHATRAS } from "./constants";
 import {
   lahiriAyanamsa,
@@ -63,10 +57,10 @@ export const HOUSE_AREAS: Record<number, string> = {
 };
 
 /** Compute the sidereal position of all nine grahas for a moment in time. */
-export function getTransits(dateUtc: Date = new Date()): TransitPosition[] {
+export async function getTransits(dateUtc: Date = new Date()): Promise<TransitPosition[]> {
   const ayanamsa = lahiriAyanamsa(dateUtc);
-  const lons = planetarySiderealLongitudes(dateUtc, ayanamsa, Astronomy);
-  const retro = detectRetrogrades(dateUtc, Astronomy);
+  const lons = planetarySiderealLongitudes(dateUtc, ayanamsa);
+  const retro = detectRetrogrades(dateUtc);
 
   return BODY_ORDER.map((body) => {
     const lon = lons[body];
@@ -116,14 +110,12 @@ export interface SignTransitReading {
 
 /**
  * Build the full Gochara picture for one rashi on a given date.
- * Everything downstream (predictions, scores) reads from this — no random
- * selection anywhere.
  */
-export function getSignTransitReading(
+export async function getSignTransitReading(
   signIndex: number,
   dateUtc: Date = new Date()
-): SignTransitReading {
-  const transits = getTransits(dateUtc);
+): Promise<SignTransitReading> {
+  const transits = await getTransits(dateUtc);
   const rashi = RASHI[signIndex];
 
   const effects: TransitEffect[] = transits.map((t) => {
@@ -193,8 +185,9 @@ export function getSignTransitReading(
 }
 
 /** Nakshatra the Moon occupies right now — the fastest-moving daily marker. */
-export function getMoonNakshatra(dateUtc: Date = new Date()): string {
-  const t = getTransits(dateUtc).find((x) => x.body === "Moon")!;
+export async function getMoonNakshatra(dateUtc: Date = new Date()): Promise<string> {
+  const transits = await getTransits(dateUtc);
+  const t = transits.find((x) => x.body === "Moon")!;
   return t.nakshatra;
 }
 

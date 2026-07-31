@@ -1,6 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
+  // Enable WebAssembly for swisseph-wasm (Swiss Ephemeris)
+  webpack: (config) => {
+    config.experiments = {
+      ...config.experiments,
+      asyncWebAssembly: true,
+    };
+    return config;
+  },
+
   images: {
     formats: ["image/avif", "image/webp"],
   },

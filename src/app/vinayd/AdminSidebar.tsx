@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { href: "/vinayd/analytics", icon: BarChart3, label: "Analytics" },
   { href: "/vinayd/pages", icon: Globe, label: "SEO Pages" },
   { href: "/vinayd/nakshatra", icon: Star, label: "Nakshatra CMS" },
+  { href: "/vinayd/kundali", icon: Sparkles, label: "Kundali Generator" },
   { href: "/vinayd/media", icon: Image, label: "Media Library" },
   { href: "/vinayd/settings", icon: Settings, label: "Settings" },
 ];

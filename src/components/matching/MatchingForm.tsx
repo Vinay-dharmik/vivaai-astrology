@@ -39,30 +39,21 @@ export function MatchingForm() {
     setResult(null);
 
     try {
-      const calc = await import("@/lib/astrology/calculations");
-      const { calculateAshtakootMatch } = await import("@/lib/astrology/matching");
-      const Astronomy = await import("astronomy-engine");
-
-      async function computePerson(p: PersonForm) {
-        const place = p.place!;
-        const { hour24, minute } = calc.to24Hour(p.hour, p.minute, p.meridiem);
-        const utc = calc.zonedBirthToUtc(p.dob, hour24, minute, place.timezone);
-        const aya = calc.lahiriAyanamsa(utc);
-        const sid = calc.planetarySiderealLongitudes(utc, aya, Astronomy);
-        const moonInfo = calc.getRashiInfo(sid.Moon);
-        const lagnaLon = calc.calcAscendantSidereal(utc, place.latitude, place.longitude, aya, Astronomy);
-        const lagnaInfo = calc.getRashiInfo(lagnaLon);
-        const marsInfo = calc.getRashiInfo(sid.Mars);
-        const marsHouse = calc.houseFromPlanet(marsInfo.signIndex, lagnaInfo.signIndex);
-        return { moonLon: sid.Moon, moonSign: moonInfo.signIndex, marsHouse };
+      const { generateMatchingData } = await import("@/app/actions/matching");
+      const res = await generateMatchingData(boy, girl);
+      if (!res.success) {
+        setError(res.error || "Failed to generate matching");
+        setLoading(false);
+        return;
       }
-
-      const b = await computePerson(boy);
-      const g = await computePerson(girl);
-      const res = calculateAshtakootMatch(b.moonLon, g.moonLon, b.moonSign, g.moonSign, b.marsHouse, g.marsHouse);
-      setResult(res);
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Matching failed.");
+      if (!res.data) {
+        setError("Failed to generate matching");
+        return;
+      }
+      setResult(res.data);
+    } catch (e: any) {
+      setError("An unexpected error occurred.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
@@ -182,3 +173,4 @@ function MatchResult({ data, boyName, girlName }: { data: MatchingResult; boyNam
     </div>
   );
 }
+

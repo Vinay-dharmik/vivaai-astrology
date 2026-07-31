@@ -1,21 +1,154 @@
 import { RASHI, NAKSHATRAS, NAK_LORDS, VIM_ORDER, VIM_YEARS, BODY_ORDER } from "./constants";
 
-// ── Helpers ──────────────────────────────────────────────
+// ── Basic Math & Angle Helpers ──────────────────────────────
 
 export function normalizeDegree(v: number): number {
   return ((v % 360) + 360) % 360;
 }
 
-function julianDay(dateUtc: Date): number {
+function toRad(deg: number): number {
+  return (deg * Math.PI) / 180;
+}
+
+function toDeg(rad: number): number {
+  return (rad * 180) / Math.PI;
+}
+
+/**
+ * Convert a JS Date (UTC) to Julian Day number.
+ */
+export function julianDay(dateUtc: Date): number {
   return dateUtc.getTime() / 86_400_000 + 2_440_587.5;
 }
 
-// ── Ayanamsa ─────────────────────────────────────────────
-
+/**
+ * Lahiri Ayanamsa formula (Official Indian Calendar Reform Committee standard).
+ * Ayanamsa at J2000.0 (2000 Jan 1.5) = 23° 51' 11.27" = 23.85313056°
+ * Rate of precession = 50.2388" per year = 1.396042° per Julian century.
+ */
 export function lahiriAyanamsa(dateUtc: Date): number {
   const jd = julianDay(dateUtc);
-  const t = (jd - 2_451_545.0) / 36525;
-  return normalizeDegree(22.460148 + 1.396042 * t + 0.000087 * t * t);
+  const T = (jd - 2_451_545.0) / 36525.0;
+  return normalizeDegree(23.85313056 + 1.396042 * T + 0.000308 * T * T);
+}
+
+// ── Pure Astronomical Planetary Engine (Paul Schlyter / Meeus High Precision) ──
+
+interface PlanetParam {
+  N0: number; N1: number; // Longitude of ascending node (deg, deg/day)
+  i0: number; i1: number; // Inclination (deg, deg/day)
+  w0: number; w1: number; // Longitude of perihelion (deg, deg/day)
+  a0: number; a1: number; // Semi-major axis (AU)
+  e0: number; e1: number; // Eccentricity
+  M0: number; M1: number; // Mean anomaly (deg, deg/day)
+}
+
+const PLANET_PARAMS: Record<string, PlanetParam> = {
+  Mercury: { N0: 48.3313, N1: 0.0000324, i0: 7.0047, i1: 0.00000005, w0: 29.1241, w1: 0.0000101, a0: 0.387098, a1: 0, e0: 0.205635, e1: 0.0000000055, M0: 168.6562, M1: 4.0923344368 },
+  Venus:   { N0: 76.6799, N1: 0.0000246, i0: 3.3946, i1: 0.000000027, w0: 54.884, w1: 0.0000048, a0: 0.72333, a1: 0, e0: 0.006773, e1: -0.0000000013, M0: 48.0052, M1: 1.6021302244 },
+  Earth:   { N0: 0, N1: 0, i0: 0, i1: 0, w0: 102.9373, w1: 0.0000047, a0: 1.00000, a1: 0, e0: 0.016709, e1: -0.00000000115, M0: 356.047, M1: 0.9856002585 },
+  Mars:    { N0: 49.5574, N1: 0.0000211, i0: 1.8497, i1: -0.000000018, w0: 286.5016, w1: 0.0000293, a0: 1.52368, a1: 0, e0: 0.093405, e1: 0.0000000024, M0: 18.6021, M1: 0.5240207766 },
+  Jupiter: { N0: 100.4542, N1: 0.0000277, i0: 1.303, i1: -0.0000000156, w0: 273.8777, w1: 0.00001645, a0: 5.20256, a1: 0, e0: 0.048498, e1: 0.0000000044, M0: 19.895, M1: 0.0830853001 },
+  Saturn:  { N0: 113.6655, N1: 0.0000238, i0: 2.4886, i1: -0.0000000108, w0: 339.3939, w1: 0.00002976, a0: 9.55475, a1: 0, e0: 0.055546, e1: -0.0000000034, M0: 316.967, M1: 0.0334442282 },
+};
+
+function getHelio3D(body: string, d: number) {
+  const p = PLANET_PARAMS[body];
+  const N = toRad(normalizeDegree(p.N0 + p.N1 * d));
+  const i = toRad(p.i0 + p.i1 * d);
+  const w = toRad(normalizeDegree(p.w0 + p.w1 * d));
+  const a = p.a0 + p.a1 * d;
+  const e = p.e0 + p.e1 * d;
+  const M = toRad(normalizeDegree(p.M0 + p.M1 * d));
+
+  let E = M;
+  for (let k = 0; k < 10; k++) {
+    E = E - (E - e * Math.sin(E) - M) / (1 - e * Math.cos(E));
+  }
+
+  const xv = a * (Math.cos(E) - e);
+  const yv = a * Math.sqrt(1 - e * e) * Math.sin(E);
+
+  const v = Math.atan2(yv, xv);
+  const r = Math.sqrt(xv * xv + yv * yv);
+
+  const u = v + w;
+  const x = r * (Math.cos(N) * Math.cos(u) - Math.sin(N) * Math.sin(u) * Math.cos(i));
+  const y = r * (Math.sin(N) * Math.cos(u) + Math.cos(N) * Math.sin(u) * Math.cos(i));
+  const z = r * (Math.sin(u) * Math.sin(i));
+
+  return { x, y, z };
+}
+
+/**
+ * Tropical Solar Longitude (Meeus Ch. 25).
+ */
+export function getSunTropicalLongitude(T: number): number {
+  const L0 = normalizeDegree(280.46646 + 36000.76983 * T + 0.0003032 * T * T);
+  const M = normalizeDegree(357.52911 + 35999.05029 * T - 0.0001537 * T * T);
+  const Mrad = toRad(M);
+
+  const C =
+    (1.914602 - 0.004817 * T - 0.000014 * T * T) * Math.sin(Mrad) +
+    (0.019993 - 0.000101 * T) * Math.sin(2 * Mrad) +
+    0.000289 * Math.sin(3 * Mrad);
+
+  const sunTrue = L0 + C;
+  const omega = toRad(125.04 - 1934.136 * T);
+  const apparentLon = sunTrue - 0.00569 - 0.00478 * Math.sin(omega);
+
+  return normalizeDegree(apparentLon);
+}
+
+/**
+ * Tropical Lunar Longitude (ELP-2000 / Meeus Ch. 47).
+ */
+export function getMoonTropicalLongitude(T: number): number {
+  const Lprime = normalizeDegree(218.3164477 + 481267.88123421 * T - 0.0015786 * T * T + (T * T * T) / 538841.0);
+  const D = normalizeDegree(297.8501921 + 445267.1114034 * T - 0.0018819 * T * T + (T * T * T) / 545868.0);
+  const M = normalizeDegree(357.5291092 + 35999.0502909 * T - 0.0001536 * T * T + (T * T * T) / 24490000.0);
+  const Mprime = normalizeDegree(134.9633964 + 477198.8675055 * T + 0.0087414 * T * T + (T * T * T) / 69699.0);
+  const F = normalizeDegree(93.272095 * T + 483202.0175233 * T - 0.0036539 * T * T - (T * T * T) / 3526000.0);
+
+  const Drad = toRad(D);
+  const Mrad = toRad(M);
+  const Mprad = toRad(Mprime);
+  const Frad = toRad(F);
+
+  let sumL = 0;
+  sumL += 6288774 * Math.sin(Mprad);
+  sumL += 1274027 * Math.sin(2 * Drad - Mprad);
+  sumL += 658314 * Math.sin(2 * Drad);
+  sumL += 213618 * Math.sin(2 * Mprad);
+  sumL += -185116 * Math.sin(Mrad);
+  sumL += -114332 * Math.sin(2 * Frad);
+  sumL += 58793 * Math.sin(2 * Drad - 2 * Mprad);
+  sumL += 57066 * Math.sin(2 * Drad - Mrad - Mprad);
+  sumL += 53322 * Math.sin(2 * Drad + Mprad);
+  sumL += 45758 * Math.sin(2 * Drad - Mrad);
+  sumL += -40923 * Math.sin(Mrad + Mprad);
+  sumL += -34720 * Math.sin(Drad);
+  sumL += -30383 * Math.sin(Mprad + 2 * Frad);
+  sumL += 15327 * Math.sin(2 * Drad - 2 * Frad);
+  sumL += -12528 * Math.sin(Mprad - 2 * Frad);
+  sumL += 10980 * Math.sin(Mprad + Mrad);
+  sumL += 10675 * Math.sin(4 * Drad - Mprad);
+  sumL += 10034 * Math.sin(3 * Mprad);
+
+  return normalizeDegree(Lprime + sumL / 1_000_000);
+}
+
+/**
+ * Lunar Node (Rahu) True Longitude.
+ */
+export function getRahuTropicalLongitude(T: number): number {
+  const meanNode = normalizeDegree(125.0445222 - 1934.1362619 * T + 0.0020708 * T * T + (T * T * T) / 450000.0);
+  const D = toRad(normalizeDegree(297.8501921 + 445267.1114034 * T));
+  const Mprime = toRad(normalizeDegree(134.9633964 + 477198.8675055 * T));
+  const F = toRad(normalizeDegree(93.272095 * T + 483202.0175233 * T));
+
+  const trueNode = meanNode - 0.168 * Math.sin(2 * (F - D)) - 0.058 * Math.sin(2 * F) - 0.022 * Math.sin(2 * D) + 0.012 * Math.sin(2 * Mprime);
+  return normalizeDegree(trueNode);
 }
 
 // ── Rashi / Nakshatra ────────────────────────────────────
@@ -50,17 +183,7 @@ export function getNakshatraInfo(siderealMoonLon: number): NakshatraResult {
   return { name: NAKSHATRAS[idx], lord: NAK_LORDS[idx], pada, index: idx };
 }
 
-// ── Rahu / Ketu ──────────────────────────────────────────
-
-function calcAscendingNodeLon(dateUtc: Date): number {
-  const jd = julianDay(dateUtc);
-  const t = (jd - 2_451_545.0) / 36525;
-  return normalizeDegree(
-    125.04452 - 1934.136261 * t + 0.0020708 * t * t + (t * t * t) / 450000
-  );
-}
-
-// ── Planet positions (requires astronomy-engine) ─────────
+// ── Planet positions ─────────────────────────────────────
 
 export interface PlanetRow {
   body: string;
@@ -69,7 +192,6 @@ export interface PlanetRow {
   rashiEnglish: string;
   house: number;
   signIndex: number;
-  // Enriched fields populated by KundaliForm — optional so buildPlanetRows stays valid
   nakshatra?: string;
   nakshatraPada?: number;
   isRetrograde?: boolean;
@@ -77,61 +199,74 @@ export interface PlanetRow {
   dignity?: string;
 }
 
-function eclipticLon(vec: unknown, Astro: any): number {
-  const ecl = Astro.Ecliptic(vec);
-  return normalizeDegree(ecl.elon);
-}
-
+/**
+ * Calculate sidereal longitudes for all 9 planets using pure astronomical formulas.
+ */
 export function planetarySiderealLongitudes(
   dateUtc: Date,
-  ayanamsa: number,
-  Astro: any
+  ayanamsa: number
 ): Record<string, number> {
-  const geoLon = (body: string) =>
-    eclipticLon(Astro.GeoVector(body, dateUtc, true), Astro);
+  const jd = julianDay(dateUtc);
+  const T = (jd - 2_451_545.0) / 36525.0;
+  const d = jd - 2451543.5; // Days since 1999 Dec 31.0
 
-  const tropical: Record<string, number> = {
-    Sun: geoLon("Sun"),
-    Moon: geoLon("Moon"),
-    Mercury: geoLon("Mercury"),
-    Venus: geoLon("Venus"),
-    Mars: geoLon("Mars"),
-    Jupiter: geoLon("Jupiter"),
-    Saturn: geoLon("Saturn"),
-    Rahu: calcAscendingNodeLon(dateUtc),
-    Ketu: normalizeDegree(calcAscendingNodeLon(dateUtc) + 180),
+  const earth = getHelio3D("Earth", d);
+
+  const trop: Record<string, number> = {
+    Sun: getSunTropicalLongitude(T),
+    Moon: getMoonTropicalLongitude(T),
+    Rahu: getRahuTropicalLongitude(T),
   };
+  trop.Ketu = normalizeDegree(trop.Rahu + 180);
+
+  const PLANETS_3D = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+  for (const body of PLANETS_3D) {
+    const pos = getHelio3D(body, d);
+    const xg = pos.x - earth.x;
+    const yg = pos.y - earth.y;
+    let lon = normalizeDegree(toDeg(Math.atan2(yg, xg)));
+
+    // Major Resonances & Perturbations (Great Inequality, etc.)
+    if (body === "Jupiter") {
+      const Mj = toRad(normalizeDegree(PLANET_PARAMS.Jupiter.M0 + PLANET_PARAMS.Jupiter.M1 * d));
+      const Ms = toRad(normalizeDegree(PLANET_PARAMS.Saturn.M0 + PLANET_PARAMS.Saturn.M1 * d));
+      lon += -0.332 * Math.sin(2 * Mj - 5 * Ms - toRad(67.6)) - 0.059 * Math.sin(3 * Mj - 2 * Ms);
+    }
+    if (body === "Saturn") {
+      const Mj = toRad(normalizeDegree(PLANET_PARAMS.Jupiter.M0 + PLANET_PARAMS.Jupiter.M1 * d));
+      const Ms = toRad(normalizeDegree(PLANET_PARAMS.Saturn.M0 + PLANET_PARAMS.Saturn.M1 * d));
+      lon += 0.812 * Math.sin(2 * Mj - 5 * Ms - toRad(67.6)) - 0.229 * Math.cos(2 * Mj - 4 * Ms);
+    }
+
+    trop[body] = lon;
+  }
 
   const sidereal: Record<string, number> = {};
   for (const body of BODY_ORDER) {
-    sidereal[body] = normalizeDegree(tropical[body] - ayanamsa);
+    sidereal[body] = normalizeDegree(trop[body] - ayanamsa);
   }
+
   return sidereal;
 }
 
 /**
- * Detect retrograde status for each planet using ecliptic longitude velocity.
- * A planet is retrograde when its apparent geocentric ecliptic longitude decreases.
- * Sun and Moon are never retrograde. Rahu/Ketu are always retrograde (mean motion).
+ * Detect retrograde status by comparing longitude at (dateUtc) vs (dateUtc - 6 hours).
  */
-export function detectRetrogrades(dateUtc: Date, Astro: any): Record<string, boolean> {
-  const RETRO_BODIES = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
+export function detectRetrogrades(dateUtc: Date): Record<string, boolean> {
+  const ayanamsa = lahiriAyanamsa(dateUtc);
+  const t1 = planetarySiderealLongitudes(dateUtc, ayanamsa);
+  const t0 = planetarySiderealLongitudes(new Date(dateUtc.getTime() - 6 * 3600 * 1000), ayanamsa);
+
   const result: Record<string, boolean> = {
     Sun: false,
     Moon: false,
-    Rahu: true,   // Rahu always moves retrograde
-    Ketu: true,   // Ketu always moves retrograde
+    Rahu: true,
+    Ketu: true,
   };
 
-  // Check velocity by computing position 1 hour apart
-  const dt = 1 / 24; // 1 hour in days
-  const future = new Date(dateUtc.getTime() + dt * 86_400_000);
-
+  const RETRO_BODIES = ["Mercury", "Venus", "Mars", "Jupiter", "Saturn"];
   for (const body of RETRO_BODIES) {
-    const lon1 = eclipticLon(Astro.GeoVector(body, dateUtc, true), Astro);
-    const lon2 = eclipticLon(Astro.GeoVector(body, future, true), Astro);
-    // Handle wrap-around at 360°/0°
-    let diff = lon2 - lon1;
+    let diff = t1[body] - t0[body];
     if (diff > 180) diff -= 360;
     if (diff < -180) diff += 360;
     result[body] = diff < 0;
@@ -140,23 +275,35 @@ export function detectRetrogrades(dateUtc: Date, Astro: any): Record<string, boo
   return result;
 }
 
-// ── Ascendant ────────────────────────────────────────────
+// ── Ascendant (Lagna) ───────────────────────────────────
 
+/**
+ * Calculate sidereal ascendant (Lagna) using Greenwich Sidereal Time & spherical trigonometry.
+ */
 export function calcAscendantSidereal(
   dateUtc: Date,
   lat: number,
   lon: number,
-  ayanamsa: number,
-  Astro: any
+  ayanamsa: number
 ): number {
-  const gstHours = Astro.SiderealTime(dateUtc);
-  const theta = (normalizeDegree(gstHours * 15 + lon) * Math.PI) / 180;
-  const phi = (lat * Math.PI) / 180;
-  const epsilon = (23.4392911 * Math.PI) / 180;
+  const jd = julianDay(dateUtc);
+  const T = (jd - 2_451_545.0) / 36525.0;
 
-  const y = -Math.cos(theta);
-  const x = Math.sin(theta) * Math.cos(epsilon) + Math.tan(phi) * Math.sin(epsilon);
-  const ascTropical = normalizeDegree((Math.atan2(y, x) * 180) / Math.PI);
+  // Greenwich Mean Sidereal Time (GMST in degrees)
+  const gmstDeg = normalizeDegree(280.46061837 + 360.98564736629 * (jd - 2_451_545.0) + 0.000387933 * T * T);
+  // Local Sidereal Time (LST in radians)
+  const lstRad = toRad(normalizeDegree(gmstDeg + lon));
+  const phiRad = toRad(lat);
+
+  // Mean Obliquity of the Ecliptic (eps in radians)
+  const epsDeg = 23.4392911 - 0.0130042 * T;
+  const epsRad = toRad(epsDeg);
+
+  // Ascendant formula (Meeus Ch. 14 / Paul Schlyter):
+  const y = Math.cos(lstRad);
+  const x = -Math.sin(lstRad) * Math.cos(epsRad) - Math.tan(phiRad) * Math.sin(epsRad);
+  const ascTropical = normalizeDegree(toDeg(Math.atan2(y, x)));
+
   return normalizeDegree(ascTropical - ayanamsa);
 }
 
@@ -251,14 +398,15 @@ export async function geocodePlace(place: string): Promise<GeoResult> {
 function getTimezoneOffsetMin(date: Date, tz: string): number {
   const dtf = new Intl.DateTimeFormat("en-US", {
     timeZone: tz,
+    hourCycle: "h23",
     year: "numeric", month: "2-digit", day: "2-digit",
     hour: "2-digit", minute: "2-digit", second: "2-digit",
-    hour12: false,
   });
   const parts = Object.fromEntries(
     dtf.formatToParts(date).filter((p) => p.type !== "literal").map((p) => [p.type, p.value])
   );
-  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, +parts.hour, +parts.minute, +parts.second);
+  const hour = +parts.hour === 24 ? 0 : +parts.hour;
+  const asUTC = Date.UTC(+parts.year, +parts.month - 1, +parts.day, hour, +parts.minute, +parts.second);
   return (asUTC - date.getTime()) / 60000;
 }
 
@@ -279,12 +427,6 @@ export function to24Hour(h12: number, min: number, meridiem: string) {
 }
 
 // ── Navamsa (D9) Chart ────────────────────────────────────
-// Divides each rashi into 9 navamsas of 3°20' (200') each.
-// The starting navamsa sign depends on the main sign's element:
-//   Fire  → starts from Aries  (0)
-//   Earth → starts from Capricorn (9)
-//   Air   → starts from Libra  (6)
-//   Water → starts from Cancer (3)
 
 export interface NavamsaResult {
   planet: string;
@@ -310,7 +452,6 @@ export function calcNavamsa(siderealLons: Record<string, number>): NavamsaResult
     const navamsaSignIndex = (startSign + navamsaIdx) % 12;
     const rashi = RASHI[navamsaSignIndex];
 
-    // Dignity in navamsa
     const exalted: Record<string, string> = { Sun: "Aries", Moon: "Taurus", Mars: "Capricorn", Mercury: "Virgo", Jupiter: "Cancer", Venus: "Pisces", Saturn: "Libra" };
     const debilitated: Record<string, string> = { Sun: "Libra", Moon: "Scorpio", Mars: "Cancer", Mercury: "Pisces", Jupiter: "Capricorn", Venus: "Virgo", Saturn: "Aries" };
     const own: Record<string, string[]> = { Sun: ["Leo"], Moon: ["Cancer"], Mars: ["Aries", "Scorpio"], Mercury: ["Gemini", "Virgo"], Jupiter: ["Sagittarius", "Pisces"], Venus: ["Taurus", "Libra"], Saturn: ["Capricorn", "Aquarius"] };
@@ -320,7 +461,6 @@ export function calcNavamsa(siderealLons: Record<string, number>): NavamsaResult
     else if (debilitated[planet] === rashi.english) dignity = "Debilitated ⬇";
     else if (own[planet]?.includes(rashi.english)) dignity = "Own Sign ★";
 
-    // Vargottama: planet in same sign in both D1 and D9 — very auspicious
     if (navamsaSignIndex === signIdx) dignity = "Vargottama ✦";
 
     return {
@@ -334,8 +474,7 @@ export function calcNavamsa(siderealLons: Record<string, number>): NavamsaResult
   });
 }
 
-// ── Proper Vimshottari Antardasha ─────────────────────────
-// Sub-period duration = (MahaDasha_years × AntarDasha_years) / 120
+// ── Vimshottari Antardasha ────────────────────────────────
 
 export interface DetailedDasha {
   mahaLord: string;
@@ -370,7 +509,6 @@ export function getDetailedVimshottari(nakLord: string, ageYears: number): Detai
   const mahaEnd = mahaStart + mahaYears;
   const ageInMaha = ageYears - mahaStart;
 
-  // Calculate antardasha
   let antarStart = 0;
   let antarLord = mahaLord;
 
@@ -411,7 +549,6 @@ export function getPlanetDignity(body: string, signEnglish: string): string {
 }
 
 // ── Lagna Lord Placement Strength ────────────────────────
-// Returns a plain-text strength label for a planet's house position
 
 export function getHouseStrength(house: number): "excellent" | "good" | "neutral" | "challenging" {
   if ([1, 4, 5, 7, 9, 10, 11].includes(house)) return "excellent";

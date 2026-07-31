@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useCallback, useState } from "react";
 import { Loader2, Gem } from "lucide-react";
 import { PlaceAutocomplete } from "@/components/ui/PlaceAutocomplete";
 import type { RemedySet } from "@/lib/astrology/remedies";
@@ -15,37 +15,30 @@ export function RemediesForm() {
 
   const update = (k: string, v: any) => setForm((p) => ({ ...p, [k]: v }));
 
-  const generate = async () => {
+  const generate = useCallback(async () => {
     if (!form.name || !form.dob || !form.place) { setError("Please fill all fields and select a city."); return; }
     setLoading(true); setError(""); setResult(null);
 
     try {
-      const calc = await import("@/lib/astrology/calculations");
-      const { generateRemedies } = await import("@/lib/astrology/remedies");
-      const Astronomy = await import("astronomy-engine");
-
-      const place = form.place!;
-      const { hour24, minute } = calc.to24Hour(form.hour, form.minute, form.meridiem);
-      const utc = calc.zonedBirthToUtc(form.dob, hour24, minute, place.timezone);
-      const aya = calc.lahiriAyanamsa(utc);
-      const sid = calc.planetarySiderealLongitudes(utc, aya, Astronomy);
-      const moonInfo = calc.getRashiInfo(sid.Moon);
-      const lagnaLon = calc.calcAscendantSidereal(utc, place.latitude, place.longitude, aya, Astronomy);
-      const lagnaInfo = calc.getRashiInfo(lagnaLon);
-      const age = calc.getAgeYears(form.dob);
-      const nakInfo = calc.getNakshatraInfo(sid.Moon);
-      const dasha = calc.getVimshottariSummary(nakInfo.lord, age);
-      const rows = calc.buildPlanetRows(sid, lagnaInfo.signIndex);
-      const weakPlanets = rows.filter((r) => [6, 8, 12].includes(r.house)).map((r) => r.body);
-
-      const remedies = generateRemedies(lagnaInfo, moonInfo, dasha.current, weakPlanets);
-      setResult({ remedies, lagna: `${lagnaInfo.name} (${lagnaInfo.english})`, moon: `${moonInfo.name} (${moonInfo.english})`, dasha: dasha.current });
-    } catch (e: unknown) {
-      setError(e instanceof Error ? e.message : "Failed.");
+      const { generateRemediesData } = await import("@/app/actions/remedies");
+      const res = await generateRemediesData(form);
+      if (!res.success) {
+        setError(res.error || "Failed to generate remedies");
+        setLoading(false);
+        return;
+      }
+      if (!res.data) {
+        setError("Failed to generate remedies");
+        return;
+      }
+      setResult(res.data);
+    } catch (e: any) {
+      setError("An unexpected error occurred.");
+      console.error(e);
     } finally {
       setLoading(false);
     }
-  };
+  }, [form]);
 
   return (
     <>
@@ -164,3 +157,4 @@ function RemedyDisplay({ data }: { data: { remedies: RemedySet; lagna: string; m
 function Sec({ title, children }: { title: string; children: React.ReactNode }) {
   return <div><h3 className="text-xs text-gold-200 uppercase tracking-wider font-semibold mb-3">{title}</h3>{children}</div>;
 }
+

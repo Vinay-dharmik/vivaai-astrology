@@ -43,7 +43,7 @@ export default async function ZodiacHoroscopePage({ params }: PageProps) {
   const today = new Date();
   const isoDate = today.toISOString().split("T")[0];
   const dateStr = today.toLocaleDateString("en-IN", { weekday: "long", year: "numeric", month: "long", day: "numeric" });
-  const d = generateDailyHoroscope(sign, today);
+  const d = await generateDailyHoroscope(sign, today);
   const cap = sign.charAt(0).toUpperCase() + sign.slice(1);
 
   // Article schema with today's date drives freshness/repeat crawling

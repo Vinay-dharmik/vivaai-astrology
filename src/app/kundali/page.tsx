@@ -6,8 +6,8 @@ import { InArticleAd } from "@/components/ui/AdBanner";
 import Link from "next/link";
 
 export const metadata = seoMeta({
-  title: "Free Kundali Generator — Vedic Birth Chart with AI Predictions",
-  description: "Generate your free Vedic Kundali instantly. Accurate Lagna, Moon sign, Nakshatra, planetary positions, Vimshottari Dasha, Dosha analysis & AI-powered interpretations. No sign-up required.",
+  title: "Free Kundali Generator — Vedic Birth Chart, Dasha & Doshas",
+  description: "Generate a free Vedic Kundali instantly: Lagna, Moon sign, Nakshatra and Pada, all nine planetary positions with degrees, Vimshottari Dasha, Dosha and Yoga analysis. Sidereal, Lahiri Ayanamsa, no sign-up.",
   path: "/kundali",
   keywords: [
     "free kundali generator", "janam kundali online", "vedic birth chart",
@@ -25,7 +25,7 @@ export default function KundaliPage() {
     applicationCategory: "LifestyleApplication",
     operatingSystem: "Web",
     offers: { "@type": "Offer", price: "0", priceCurrency: "INR" },
-    description: "Free Vedic Kundali with Lagna, Nakshatra, Dasha, Doshas, Yogas & AI predictions.",
+    description: "Free Vedic Kundali with Lagna, Nakshatra, Vimshottari Dasha, Doshas and 23 classical Yogas.",
   };
 
   const faqJsonLd = {
@@ -40,7 +40,7 @@ export default function KundaliPage() {
       {
         "@type": "Question",
         name: "How accurate is the VivaAI Kundali generator?",
-        acceptedAnswer: { "@type": "Answer", text: "VivaAI uses the Astronomy Engine library with Lahiri Ayanamsa for high-precision sidereal calculations. Our planetary positions match professional astrology software like AstroSage and Kundli Software to within 0.01° accuracy. The accuracy depends on the precision of birth time provided — even a few minutes can change the Ascendant." },
+        acceptedAnswer: { "@type": "Answer", text: "Planetary longitudes are computed from the periodic series published in Jean Meeus's Astronomical Algorithms and converted to the sidereal zodiac with the Lahiri Ayanamsa. A verification script in our repository checks the engine against independently published equinox, solstice and eclipse timings: it currently places the Sun within 0.4 arcminutes and the Moon within 0.9 arcminutes, with the visible planets inside a few arcminutes. For scale, a Nakshatra Pada spans 200 arcminutes. The real limit on your chart is your recorded birth time — four minutes of clock error can move the Ascendant a full degree." },
       },
       {
         "@type": "Question",
@@ -67,7 +67,7 @@ export default function KundaliPage() {
             Free Kundali Generator
           </h1>
           <p className="text-[var(--text-muted)]">
-            Enter your birth details for an accurate Vedic birth chart with AI-powered insights.
+            Enter your birth details for a sidereal Vedic birth chart with Dasha timeline, Doshas and Yogas.
           </p>
         </div>
         <KundaliForm />
@@ -104,7 +104,7 @@ export default function KundaliPage() {
             <div className="space-y-3">
               <div className="flex gap-3">
                 <span className="text-gold-400 font-bold shrink-0">1.</span>
-                <p><strong className="text-white">Astronomical Calculation</strong> — We use the <em>Astronomy Engine</em> library to compute the precise ecliptic longitude of the Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn, and the lunar nodes (Rahu and Ketu) at your exact birth moment. These calculations account for planetary perturbations, orbital mechanics, and the equation of time.</p>
+                <p><strong className="text-white">Astronomical Calculation</strong> — Your birth moment is converted to a Julian Day, then to ecliptic longitudes for the Sun, Moon, Mars, Mercury, Jupiter, Venus, Saturn and the lunar nodes. The Sun and Moon use the periodic series from Jean Meeus&apos;s <em>Astronomical Algorithms</em> — the full 60-term lunar longitude series, because the Moon fixes your Nakshatra, your Pada and the starting balance of your Dasha. The visible planets use Keplerian orbital elements with the Jupiter–Saturn resonance corrections and a light-time correction applied.</p>
               </div>
               <div className="flex gap-3">
                 <span className="text-gold-400 font-bold shrink-0">2.</span>
@@ -173,7 +173,7 @@ export default function KundaliPage() {
           <div className="space-y-3">
             {[
               { q: "What is a Kundali in Vedic Astrology?", a: "A Kundali (Janam Kundali) is a Vedic birth chart that maps the exact positions of all nine planets across the 12 houses and zodiac signs at your birth moment. It serves as your cosmic blueprint, revealing personality traits, career potential, relationship compatibility, and the timing of major life events through the Vimshottari Dasha system." },
-              { q: "How accurate is the VivaAI Kundali generator?", a: "We use the Astronomy Engine library with Lahiri Ayanamsa for high-precision sidereal calculations. Our planetary positions match professional software like AstroSage to within 0.01° accuracy. The accuracy depends on the precision of birth time provided — even a few minutes can change the Ascendant." },
+              { q: "How accurate is the VivaAI Kundali generator?", a: "Planetary longitudes are computed from the periodic series published in Jean Meeus's Astronomical Algorithms and converted to the sidereal zodiac with the Lahiri Ayanamsa. A verification script in our repository checks the engine against independently published equinox, solstice and eclipse timings: it currently places the Sun within 0.4 arcminutes and the Moon within 0.9 arcminutes, with the visible planets inside a few arcminutes. For scale, a Nakshatra Pada spans 200 arcminutes. The real limit on your chart is your recorded birth time — four minutes of clock error can move the Ascendant a full degree." },
               { q: "Is the Kundali report really free?", a: "Yes, the complete Kundali report is 100% free with no sign-up required. You get the full birth chart with all 9 planets, Dosha analysis, Yoga detection, Vimshottari Dasha timeline, predictions, gemstone recommendations, and remedies." },
               { q: "What information do I need to generate my Kundali?", a: "You need three pieces of information: your exact date of birth, your time of birth (as precise as possible), and your place of birth. The time of birth is especially critical as it determines your Ascendant (Lagna)." },
               { q: "How is Vedic astrology different from Western astrology?", a: "Vedic astrology uses the sidereal zodiac (aligned with actual star positions) while Western astrology uses the tropical zodiac (aligned with seasons). This creates a ~23° difference. Vedic astrology also emphasizes the Moon sign, Nakshatra system, and Dasha predictive timeline, which Western astrology does not use." },

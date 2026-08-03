@@ -10,7 +10,7 @@ const FAQS = [
   },
   {
     q: "How accurate are the calculations?",
-    a: "We use the industry-standard Lahiri Ayanamsa with the Astronomy Engine library for high-precision planetary calculations. The same mathematical models used by professional astrology software. Our calculations match leading platforms like AstroSage and Kundli Software to within 0.01° accuracy.",
+    a: "Planetary longitudes come from the periodic series published in Jean Meeus's Astronomical Algorithms, converted to the sidereal zodiac with the Lahiri Ayanamsa. A verification script in our repository checks the engine against equinox, solstice and eclipse timings we did not compute ourselves — it currently places the Sun within 0.4 arcminutes and the Moon within 0.9 arcminutes. Your chart's real limiting factor is your recorded birth time, not the ephemeris: four minutes of clock error can move the Ascendant by a degree.",
   },
   {
     q: "What is Ashtakoot matching? How does it work?",
@@ -34,7 +34,7 @@ const FAQS = [
   },
   {
     q: "Do you use AI or rule-based astrology?",
-    a: "Currently, all interpretations use traditional Vedic astrology rules implemented in code — the same rules used by astrologers for thousands of years. We're developing AI-enhanced interpretations that will combine traditional rules with modern AI for even more personalized insights.",
+    a: "No. There is no language model and no AI of any kind in the reading. Every sentence is produced by rules keyed to your actual chart — which planet lords which house, whether it is exalted or debilitated, which Yogas your placements form. VivaAI is the brand name; it is not a description of the technology. The same birth details will always return exactly the same report.",
   },
 ];
 

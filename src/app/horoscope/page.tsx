@@ -7,7 +7,7 @@ import { RelatedTools } from "@/components/ui/RelatedTools";
 
 export const metadata = seoMeta({
   title: "Daily Horoscope — All 12 Zodiac Signs | Vedic Predictions",
-  description: "Free daily, weekly, monthly and yearly horoscope for all 12 zodiac signs. AI-powered Vedic astrology predictions based on Moon sign, planetary transits & Dasha periods.",
+  description: "Free daily, weekly, monthly and yearly horoscope for all 12 zodiac signs. Vedic predictions based on your Moon sign, current planetary transits and Vimshottari Dasha periods.",
   path: "/horoscope",
   keywords: [
     "daily horoscope", "horoscope today", "zodiac predictions",

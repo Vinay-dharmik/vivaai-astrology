@@ -1,4 +1,6 @@
 import type { KundaliData } from "@/components/kundali/KundaliForm";
+import { northIndianCells, northIndianFrame } from "@/lib/astrology/chartGeometry";
+import { sarvaVerdict } from "@/lib/astrology/ashtakavarga";
 
 /**
  * Generate an ultra-premium PDF Kundali report using jsPDF.
@@ -130,69 +132,72 @@ export async function generateKundaliPDF(data: KundaliData) {
 
   // ── Vector North Indian Chart Drawing Function ────────────
 
+  /**
+   * Draws the North Indian chart from the same geometry the web chart uses.
+   *
+   * This used to carry its own hand-typed coordinate table, with the same
+   * out-of-polygon label placements as the old web chart — and it derived the
+   * Ascendant from the Sun's sign index, so the Rashi numbers printed around
+   * the diamond were wrong for anyone not born at sunrise.
+   */
   function drawNorthIndianVectorChart(cx: number, cy: number, size: number) {
-    const half = size / 2;
+    const cells = northIndianCells(size, 0);
+    const frame = northIndianFrame(size, 0);
+    const lagnaIdx = data.lagnaSignIndex;
 
-    // Outer Square
     doc.setDrawColor(...GOLD);
     doc.setLineWidth(0.6);
-    doc.rect(cx, cy, size, size, "S");
+    doc.rect(cx + frame.outer.x, cy + frame.outer.y, frame.outer.w, frame.outer.h, "S");
 
-    // Diagonals
     doc.setLineWidth(0.3);
-    doc.line(cx, cy, cx + size, cy + size);
-    doc.line(cx + size, cy, cx, cy + size);
+    for (const d of frame.diagonals) {
+      doc.line(cx + d.x1, cy + d.y1, cx + d.x2, cy + d.y2);
+    }
+    const diamond = frame.diamond.split(" ").map((pair) => pair.split(",").map(Number));
+    for (let i = 0; i < diamond.length; i++) {
+      const a = diamond[i];
+      const b = diamond[(i + 1) % diamond.length];
+      doc.line(cx + a[0], cy + a[1], cx + b[0], cy + b[1]);
+    }
 
-    // Inner Diamond
-    doc.line(cx + half, cy, cx + size, cy + half);
-    doc.line(cx + size, cy + half, cx + half, cy + size);
-    doc.line(cx + half, cy + size, cx, cy + half);
-    doc.line(cx, cy + half, cx + half, cy);
+    const byHouse = new Map(data.houses.map((h) => [h.house, h]));
+    const degreeOf = new Map(data.planets.map((p) => [p.body, p]));
 
-    // Map houses to positions inside vector box
-    const lagnaIdx = data.lagna.degree !== undefined ? (data.planets.find(p => p.body === "Sun")?.signIndex ?? 0) : 0;
-    const houseMap: Record<number, { planets: string[] }> = {};
-    data.houses.forEach(h => { houseMap[h.house] = h; });
+    for (const cell of cells) {
+      const house = cell.index;
 
-    const coords: Record<number, { sx: number; sy: number; px: number; py: number }> = {
-      1:  { sx: cx + half, sy: cy + half * 0.6, px: cx + half, py: cy + half * 0.4 },
-      2:  { sx: cx + half * 0.4, sy: cy + half * 0.25, px: cx + half * 0.3, py: cy + half * 0.4 },
-      3:  { sx: cx + half * 0.2, sy: cy + half * 0.5, px: cx + half * 0.35, py: cy + half * 0.75 },
-      4:  { sx: cx + half * 0.6, sy: cy + half, px: cx + half * 0.4, py: cy + half },
-      5:  { sx: cx + half * 0.2, sy: cy + half * 1.5, px: cx + half * 0.35, py: cy + half * 1.25 },
-      6:  { sx: cx + half * 0.4, sy: cy + half * 1.75, px: cx + half * 0.3, py: cy + half * 1.6 },
-      7:  { sx: cx + half, sy: cy + half * 1.4, px: cx + half, py: cy + half * 1.6 },
-      8:  { sx: cx + half * 1.6, sy: cy + half * 1.75, px: cx + half * 1.7, py: cy + half * 1.6 },
-      9:  { sx: cx + half * 1.8, sy: cy + half * 1.5, px: cx + half * 1.65, py: cy + half * 1.25 },
-      10: { sx: cx + half * 1.4, sy: cy + half, px: cx + half * 1.6, py: cy + half },
-      11: { sx: cx + half * 1.8, sy: cy + half * 0.5, px: cx + half * 1.65, py: cy + half * 0.75 },
-      12: { sx: cx + half * 1.6, sy: cy + half * 0.25, px: cx + half * 1.7, py: cy + half * 0.4 },
-    };
-
-    // Label House 1 LAGNA
-    doc.setFontSize(6);
-    doc.setTextColor(...GOLD);
-    doc.setFont("helvetica", "bold");
-    doc.text("LAGNA", cx + half, cy + 6, { align: "center" });
-
-    // Draw house numbers and planet abbreviations
-    for (let h = 1; h <= 12; h++) {
-      const pos = coords[h];
-      const signNum = ((data.lagna.lord ? (data.houses.find(x => x.house === 1)?.sign ? (["Mesha","Vrishabha","Mithuna","Karka","Simha","Kanya","Tula","Vrischika","Dhanu","Makara","Kumbha","Meena"].indexOf(data.houses.find(x => x.house === 1)!.sign)) : 0) : 0) + h - 1) % 12 + 1;
-
-      doc.setFontSize(6);
+      doc.setFontSize(5.5);
       doc.setTextColor(...GOLD);
       doc.setFont("helvetica", "bold");
-      doc.text(String(signNum), pos.sx, pos.sy, { align: "center" });
+      doc.text(
+        String(((lagnaIdx + house - 1) % 12) + 1),
+        cx + cell.signAnchor.x,
+        cy + cell.signAnchor.y,
+        { align: "center" }
+      );
 
-      const planets = houseMap[h]?.planets || [];
-      if (planets.length > 0) {
-        doc.setFontSize(5.5);
-        doc.setTextColor(...GREEN);
-        doc.setFont("helvetica", "bold");
-        const pStr = planets.map(p => p.substring(0, 2)).join(",");
-        doc.text(pStr, pos.px, pos.py, { align: "center" });
+      if (house === 1) {
+        doc.setFontSize(4.5);
+        doc.text("ASC", cx + cell.centroid.x, cy + cell.top + 4, { align: "center" });
       }
+
+      const occupants = byHouse.get(house)?.planets ?? [];
+      if (occupants.length === 0) continue;
+
+      // One planet per line, centred on the centroid, so nothing overlaps.
+      doc.setFontSize(occupants.length > 3 ? 4.2 : 5);
+      doc.setFont("helvetica", "bold");
+      const lineH = occupants.length > 3 ? 2.2 : 2.8;
+      const startY = cy + cell.centroid.y - ((occupants.length - 1) * lineH) / 2;
+
+      occupants.forEach((body, i) => {
+        const p = degreeOf.get(body);
+        doc.setTextColor(...(p?.isRetrograde ? RED : GREEN));
+        const label = p
+          ? `${body.substring(0, 2)}${p.isRetrograde ? "(R)" : ""} ${Math.floor(p.signDegree)}`
+          : body.substring(0, 2);
+        doc.text(label, cx + cell.centroid.x, startY + i * lineH, { align: "center" });
+      });
     }
   }
 
@@ -341,6 +346,165 @@ export async function generateKundaliPDF(data: KundaliData) {
     ], false, navCols);
   });
   y += 4;
+
+  // ════════════════ Shadbala ════════════════
+
+  checkPage(70);
+  heading("Shadbala — Six-Fold Planetary Strength", 11);
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(...MUTED);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    doc.splitTextToSize(
+      "Parashara sets a required minimum for each planet. The ratio to that minimum matters more than the raw total: below 100%, a planet still signifies its matters but cannot bring them about on its own schedule. Figures in Rupas.",
+      CW
+    ),
+    M,
+    y
+  );
+  y += 9;
+
+  const balaCols = [26, 26, 26, 26, 30, 46];
+  tableRow(["Planet", "Total", "Required", "% of min", "Verdict", "Strongest component"], true, balaCols);
+
+  [...data.shadbala].sort((a, b) => b.ratio - a.ratio).forEach((s) => {
+    const parts: [string, number][] = [
+      ["Positional", s.breakdown.sthanaTotal / 5],
+      ["Directional", s.breakdown.dig],
+      ["Temporal", s.breakdown.kalaTotal / 5],
+      ["Motional", s.breakdown.cheshta],
+      ["Natural", s.breakdown.naisargika],
+    ];
+    const strongest = parts.reduce((a, c) => (c[1] > a[1] ? c : a));
+    tableRow([
+      s.planet,
+      s.totalRupas.toFixed(2),
+      String(s.requiredRupas),
+      `${Math.round(s.ratio * 100)}%`,
+      s.verdict,
+      strongest[0],
+    ], false, balaCols);
+  });
+  y += 4;
+
+  // ════════════════ Ashtakavarga ════════════════
+
+  checkPage(80);
+  heading("Ashtakavarga — Bindu Support by House", 11);
+
+  doc.setFontSize(6.5);
+  doc.setTextColor(...MUTED);
+  doc.setFont("helvetica", "normal");
+  doc.text(
+    doc.splitTextToSize(
+      `Each sign is scored by how much support it receives from the whole chart. The seven individual charts sum to ${data.ashtakavarga.sarvaTotal} bindus (classical check figure: 337). Average per sign is 28; transits through high-bindu signs tend to go well.`,
+      CW
+    ),
+    M,
+    y
+  );
+  y += 9;
+
+  const avCols = [24, ...Array(12).fill((CW - 24 - 20) / 12), 20];
+  tableRow(
+    ["Planet", ...Array.from({ length: 12 }, (_, i) => String(i + 1)), "Tot"],
+    true,
+    avCols
+  );
+
+  data.ashtakavarga.bhinna.forEach((b) => {
+    tableRow(
+      [
+        b.planet,
+        ...Array.from({ length: 12 }, (_, i) =>
+          String(b.bindusBySign[(data.lagnaSignIndex + i) % 12])
+        ),
+        String(b.total),
+      ],
+      false,
+      avCols
+    );
+  });
+
+  tableRow(
+    [
+      "Sarva",
+      ...Array.from({ length: 12 }, (_, i) =>
+        String(data.ashtakavarga.sarvaBySign[(data.lagnaSignIndex + i) % 12])
+      ),
+      String(data.ashtakavarga.sarvaTotal),
+    ],
+    false,
+    avCols
+  );
+  y += 3;
+
+  doc.setFontSize(6);
+  doc.setTextColor(...MUTED);
+  const best = data.ashtakavarga.strongestSigns[0];
+  const worst = data.ashtakavarga.weakestSigns[0];
+  const bestHouse = ((best - data.lagnaSignIndex + 12) % 12) + 1;
+  const worstHouse = ((worst - data.lagnaSignIndex + 12) % 12) + 1;
+  doc.text(
+    doc.splitTextToSize(
+      `Columns are houses from your Ascendant. Best supported: house ${bestHouse} with ${data.ashtakavarga.sarvaBySign[best]} bindus (${sarvaVerdict(data.ashtakavarga.sarvaBySign[best]).label.toLowerCase()}). Weakest: house ${worstHouse} with ${data.ashtakavarga.sarvaBySign[worst]} bindus.`,
+      CW
+    ),
+    M,
+    y
+  );
+  y += 8;
+
+  // ════════════════ Planet-by-planet analysis ════════════════
+
+  checkPage(60);
+  heading("Planet-by-Planet Analysis", 11);
+
+  data.planetReports.forEach((r) => {
+    checkPage(40);
+
+    doc.setFillColor(...CARD_BG);
+    doc.roundedRect(M, y - 3, CW, 8, 2, 2, "F");
+    doc.setFontSize(9);
+    doc.setTextColor(...GOLD);
+    doc.setFont("helvetica", "bold");
+    doc.text(`${r.planet} — ${r.placement}`, M + 3, y + 2.5);
+    doc.setFontSize(6.5);
+    doc.setTextColor(...MUTED);
+    doc.setFont("helvetica", "normal");
+    doc.text(r.rulership.nature, M + CW - 3, y + 2.5, { align: "right" });
+    y += 10;
+
+    const para = (text: string, color: RGB = MUTED, size = 6.8) => {
+      const lines = doc.splitTextToSize(text, CW - 4);
+      checkPage(lines.length * 3 + 3);
+      doc.setFontSize(size);
+      doc.setTextColor(...color);
+      doc.setFont("helvetica", "normal");
+      doc.text(lines, M + 2, y);
+      y += lines.length * 3 + 1.5;
+    };
+
+    const bullets = (title: string, items: string[], color: RGB) => {
+      if (items.length === 0) return;
+      checkPage(8);
+      doc.setFontSize(6.5);
+      doc.setTextColor(...color);
+      doc.setFont("helvetica", "bold");
+      doc.text(title.toUpperCase(), M + 2, y);
+      y += 3.5;
+      items.forEach((t) => para(`•  ${t}`));
+    };
+
+    para(r.significations, WHITE, 7);
+    bullets("Strengths", r.strengths, GREEN);
+    bullets("Weaknesses", r.weaknesses, RED);
+    bullets("How it acts", r.effects, GOLD);
+    para(`Timing: ${r.timing}`);
+    para(`Strengthening it: ${r.remedy}`, GOLD);
+    y += 3;
+  });
 
   // ════════════════ PAGE 3: Doshas, Yogas & Life Predictions ════════════════
 

@@ -3,7 +3,7 @@ import { ImageResponse } from "next/og";
 // Site-wide default Open Graph image. Next.js uses this for og:image on every
 // route that doesn't define its own — fixes blank WhatsApp/Twitter/FB share cards.
 export const runtime = "edge";
-export const alt = "VivaAI Astrology — Free Vedic Kundali & AI Astrology";
+export const alt = "VivaAI Astrology — Free Vedic Kundali & Birth Chart";
 export const size = { width: 1200, height: 630 };
 export const contentType = "image/png";
 

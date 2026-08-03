@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { motion } from "framer-motion";
 import { Download, Loader2, AlertCircle, CheckCircle, Shield } from "lucide-react";
-import { KundaliChart } from "./KundaliChart";
+import { KundaliChart, type ChartVariant } from "./KundaliChart";
+import { PlanetAnalysis, ShadbalaTable, AshtakavargaTable } from "./PlanetAnalysis";
 import type { KundaliData } from "./KundaliForm";
 
 declare global {
@@ -16,6 +17,71 @@ export function KundaliResult({ data }: { data: KundaliData }) {
   const [paymentStatus, setPaymentStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [errorMsg, setErrorMsg] = useState("");
   const isPaid = paymentStatus === "success";
+
+  /**
+   * The three charts a Vedic reading is normally done against.
+   *
+   * D1 answers "what happened", the Moon chart re-reads the same placements
+   * from the mind's point of view, and D9 is the chart classical authors turn
+   * to for marriage and for whether a promise in D1 actually delivers.
+   */
+  const chartVariants: ChartVariant[] = useMemo(() => {
+    const navamsaByPlanet = new Map(data.navamsa.map((n) => [n.planet, n]));
+
+    return [
+      {
+        key: "d1",
+        label: "Lagna (D1)",
+        caption: "The birth chart itself — houses counted from the rising sign.",
+        ascSignIndex: data.lagnaSignIndex,
+        showDegrees: true,
+        planets: data.planets.map((p) => ({
+          body: p.body,
+          signIndex: p.signIndex,
+          signDegree: p.signDegree,
+          isRetrograde: p.isRetrograde,
+          isCombust: p.isCombust,
+          dignity: p.dignity,
+          nakshatra: p.nakshatra,
+          nakshatraPada: p.nakshatraPada,
+        })),
+      },
+      {
+        key: "chandra",
+        label: "Chandra (Moon)",
+        caption: "The same sky with the Moon's sign as the first house — how events are felt.",
+        ascSignIndex: data.moonSignIndex,
+        showDegrees: true,
+        planets: data.planets.map((p) => ({
+          body: p.body,
+          signIndex: p.signIndex,
+          signDegree: p.signDegree,
+          isRetrograde: p.isRetrograde,
+          isCombust: p.isCombust,
+          dignity: p.dignity,
+          nakshatra: p.nakshatra,
+          nakshatraPada: p.nakshatraPada,
+        })),
+      },
+      {
+        key: "d9",
+        label: "Navamsa (D9)",
+        caption: "The ninth harmonic — marriage, dharma, and the durability of D1's promises.",
+        ascSignIndex: data.navamsaLagnaSignIndex,
+        // A D9 position is a whole-sign mapping; the degree inside it is an
+        // artefact of the division, so printing one would imply precision
+        // the varga does not carry.
+        showDegrees: false,
+        planets: data.planets.map((p) => ({
+          body: p.body,
+          signIndex: navamsaByPlanet.get(p.body)?.navamsaSignIndex ?? p.signIndex,
+          isRetrograde: p.isRetrograde,
+          isCombust: p.isCombust,
+          dignity: navamsaByPlanet.get(p.body)?.dignity,
+        })),
+      },
+    ];
+  }, [data]);
 
   const loadRazorpayScript = (): Promise<void> => {
     return new Promise((resolve, reject) => {
@@ -146,10 +212,7 @@ export function KundaliResult({ data }: { data: KundaliData }) {
       {/* Birth Chart Summary — FREE */}
       <Section title="Birth Chart Summary" badge="FREE">
         <div className="mb-6">
-          <KundaliChart
-            houses={data.houses}
-            lagnaSignIndex={["Mesha","Vrishabha","Mithuna","Karka","Simha","Kanya","Tula","Vrischika","Dhanu","Makara","Kumbha","Meena"].indexOf(data.houses.find(x => x.house === 1)?.sign || "Mesha")}
-          />
+          <KundaliChart variants={chartVariants} />
         </div>
         <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-3">
           <Card label="Lagna (Ascendant)" value={`${data.lagna.name} (${data.lagna.english})`} sub={`Lord: ${data.lagna.lord} • ${data.lagna.degree.toFixed(1)}°`} />
@@ -200,6 +263,21 @@ export function KundaliResult({ data }: { data: KundaliData }) {
       </Section>
 
       {/* ═══════ ALL CONTENT FREE ═══════ */}
+
+      {/* Planet-by-planet analysis — the heart of the report */}
+      <Section title="Planet-by-Planet Analysis — Strength, Weakness & Effects" badge="FREE">
+        <PlanetAnalysis data={data} />
+      </Section>
+
+      {/* Shadbala */}
+      <Section title="Shadbala — Six-Fold Planetary Strength" badge="FREE">
+        <ShadbalaTable data={data} />
+      </Section>
+
+      {/* Ashtakavarga */}
+      <Section title="Ashtakavarga — Bindu Support by Sign" badge="FREE">
+        <AshtakavargaTable data={data} />
+      </Section>
 
       {/* Dosha Analysis */}
       <LockedSection title="Dosha Analysis (Manglik, Kaal Sarp, Sade Sati)" isPaid={isPaid} onUnlock={handleUnlock} paymentStatus={paymentStatus}>
@@ -441,7 +519,7 @@ export function KundaliResult({ data }: { data: KundaliData }) {
       </div>
 
       <p className="text-xs text-[var(--text-muted)] text-center pt-4 border-t border-[var(--border)]">
-        Calculated using Astronomy Engine + Lahiri Ayanamsa ({data.ayanamsa.toFixed(4)}°).
+        Calculated from Meeus astronomical algorithms with the Lahiri Ayanamsa ({data.ayanamsa.toFixed(4)}°).
         For major life decisions, consult a qualified Vedic astrologer.
       </p>
     </motion.div>

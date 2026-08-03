@@ -1,297 +1,582 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useRef, useState } from "react";
+import { Download } from "lucide-react";
+import {
+  northIndianCells,
+  northIndianFrame,
+  southIndianCells,
+  fitTokens,
+  type HouseCell,
+  type Pt,
+} from "@/lib/astrology/chartGeometry";
 
-interface HouseInfo {
-  house: number;
-  sign: string;
-  signEnglish: string;
-  lord: string;
-  planets: string[];
+// ── Types ─────────────────────────────────────────────────
+
+export interface ChartPlanet {
+  body: string;
+  /** Sign index 0–11 *within this divisional chart*. */
+  signIndex: number;
+  /** Degrees within that sign, 0–30. Omitted for vargas where it has no meaning. */
+  signDegree?: number;
+  isRetrograde?: boolean;
+  isCombust?: boolean;
+  dignity?: string;
+  nakshatra?: string;
+  nakshatraPada?: number;
 }
 
-interface KundaliChartProps {
-  houses: HouseInfo[];
-  lagnaSignIndex: number; // 0-indexed (0=Aries, 1=Taurus...)
+export interface ChartVariant {
+  key: string;
+  label: string;
+  /** One line explaining what the chart is for. */
+  caption: string;
+  /** Sign index rising in this chart. */
+  ascSignIndex: number;
+  planets: ChartPlanet[];
+  /** D9 and the Moon chart have no meaningful degree-in-sign to print. */
+  showDegrees?: boolean;
 }
 
-export function KundaliChart({ houses, lagnaSignIndex }: KundaliChartProps) {
+// ── Constants ─────────────────────────────────────────────
+
+const SIGN_SHORT = [
+  "Ari", "Tau", "Gem", "Can", "Leo", "Vir",
+  "Lib", "Sco", "Sag", "Cap", "Aqu", "Pis",
+];
+
+const SIGN_SANSKRIT = [
+  "Mesha", "Vrishabha", "Mithuna", "Karka", "Simha", "Kanya",
+  "Tula", "Vrischika", "Dhanu", "Makara", "Kumbha", "Meena",
+];
+
+const SIGN_LORD = [
+  "Mars", "Venus", "Mercury", "Moon", "Sun", "Mercury",
+  "Venus", "Mars", "Jupiter", "Saturn", "Saturn", "Jupiter",
+];
+
+const BODY_SHORT: Record<string, string> = {
+  Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me", Jupiter: "Ju",
+  Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke",
+};
+
+/** What each house is read for — shown when a house is selected. */
+const HOUSE_MEANING: Record<number, string> = {
+  1: "Body, temperament, vitality, how you meet the world",
+  2: "Accumulated wealth, family line, speech, food",
+  3: "Younger siblings, courage, initiative, short journeys",
+  4: "Mother, home, land and vehicles, inner contentment, schooling",
+  5: "Children, intelligence, past merit, speculation, romance",
+  6: "Illness, debt, enemies, litigation, daily service",
+  7: "Marriage, business partners, contracts, open opposition",
+  8: "Longevity, upheaval, inheritance, the occult, others' money",
+  9: "Fortune, dharma, father, teachers, long journeys, higher learning",
+  10: "Profession, status, public action, authority",
+  11: "Income, gains, elder siblings, networks, fulfilled desires",
+  12: "Loss and expenditure, foreign lands, seclusion, liberation",
+};
+
+const CHART_SIZE = 400;
+const CHART_PAD = 14;
+
+const COLORS = {
+  gold: "#ffb347",
+  goldDim: "rgba(255,179,71,0.45)",
+  ink: "#0b0c16",
+  panel: "#12132399",
+  planet: "#e9e4d8",
+  benefic: "#7fd6a2",
+  retro: "#ff7a7a",
+  combust: "#8b8fa3",
+  asc: "#ff5f8f",
+};
+
+// ── Token building ────────────────────────────────────────
+
+function degToken(deg: number, minutes: boolean): string {
+  if (!minutes) return `${Math.floor(deg)}°`;
+  const d = Math.floor(deg);
+  const m = Math.round((deg - d) * 60);
+  return m === 60 ? `${d + 1}°00′` : `${d}°${String(m).padStart(2, "0")}′`;
+}
+
+/**
+ * Three progressively terser renderings of the same planet list. The fitter
+ * walks down this list until something fits the house, so a crowded house
+ * loses its minutes before it loses a planet.
+ */
+function tokenVariants(planets: ChartPlanet[], showDegrees: boolean): string[][] {
+  const abbrev = (p: ChartPlanet) => BODY_SHORT[p.body] ?? p.body.slice(0, 2);
+  const retro = (p: ChartPlanet) => (p.isRetrograde ? "℞" : "");
+
+  const withMinutes = planets.map(
+    (p) => `${abbrev(p)}${retro(p)} ${degToken(p.signDegree ?? 0, true)}`
+  );
+  const withDegrees = planets.map(
+    (p) => `${abbrev(p)}${retro(p)} ${degToken(p.signDegree ?? 0, false)}`
+  );
+  const bare = planets.map((p) => `${abbrev(p)}${retro(p)}`);
+
+  return showDegrees ? [withMinutes, withDegrees, bare] : [bare];
+}
+
+function planetsInSign(planets: ChartPlanet[], signIndex: number): ChartPlanet[] {
+  return planets
+    .filter((p) => p.signIndex === signIndex)
+    .sort((a, b) => (a.signDegree ?? 0) - (b.signDegree ?? 0));
+}
+
+/** Colour a token by the state of the planet it names. */
+function planetFill(p: ChartPlanet): string {
+  if (p.isRetrograde) return COLORS.retro;
+  if (p.isCombust) return COLORS.combust;
+  if (p.dignity?.startsWith("Exalted") || p.dignity?.startsWith("Own")) return COLORS.benefic;
+  return COLORS.planet;
+}
+
+// ── Main component ────────────────────────────────────────
+
+export function KundaliChart({ variants }: { variants: ChartVariant[] }) {
   const [style, setStyle] = useState<"north" | "south">("north");
+  const [vargaKey, setVargaKey] = useState(variants[0]?.key ?? "");
+  const [selected, setSelected] = useState<number | null>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
-  // Map house numbers to house data
-  const houseMap: Record<number, HouseInfo> = {};
-  for (const h of houses) {
-    houseMap[h.house] = h;
-  }
+  const varga = variants.find((v) => v.key === vargaKey) ?? variants[0];
+
+  const downloadPng = () => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const xml = new XMLSerializer().serializeToString(svg);
+    const scale = 3;
+    const img = new Image();
+    img.onload = () => {
+      const canvas = document.createElement("canvas");
+      canvas.width = CHART_SIZE * scale;
+      canvas.height = CHART_SIZE * scale;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return;
+      ctx.fillStyle = COLORS.ink;
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      const a = document.createElement("a");
+      a.download = `kundali-${style}-${varga.key}.png`;
+      a.href = canvas.toDataURL("image/png");
+      a.click();
+    };
+    img.src = "data:image/svg+xml;charset=utf-8," + encodeURIComponent(xml);
+  };
+
+  if (!varga) return null;
 
   return (
     <div className="bg-[#0b0c16] border border-gold-400/20 rounded-2xl p-4 sm:p-6 shadow-2xl">
-      {/* Header with Style Switcher */}
-      <div className="flex items-center justify-between mb-4 flex-wrap gap-2">
-        <div>
+      {/* Chart selector */}
+      <div className="flex items-start justify-between gap-3 mb-4 flex-wrap">
+        <div className="min-w-0">
           <h3 className="text-sm font-bold gold-text uppercase tracking-wider">
-            {style === "north" ? "North Indian (Lagna Chart)" : "South Indian (Rashi Chart)"}
+            {varga.label} · {style === "north" ? "North Indian" : "South Indian"}
           </h3>
-          <p className="text-[0.65rem] text-[var(--text-muted)]">
-            {style === "north" ? "House 1 (Top Center) = Lagna" : "Fixed Sign Layout"}
-          </p>
+          <p className="text-[0.65rem] text-[var(--text-muted)] mt-0.5">{varga.caption}</p>
         </div>
-        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10">
-          <button
-            onClick={() => setStyle("north")}
-            className={`px-3 py-1 text-xs rounded-lg font-semibold transition ${
-              style === "north" ? "bg-gold-400 text-black shadow-glow" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            North Indian
-          </button>
-          <button
-            onClick={() => setStyle("south")}
-            className={`px-3 py-1 text-xs rounded-lg font-semibold transition ${
-              style === "south" ? "bg-gold-400 text-black shadow-glow" : "text-gray-400 hover:text-white"
-            }`}
-          >
-            South Indian
-          </button>
+        <div className="flex items-center gap-1 bg-white/5 p-1 rounded-xl border border-white/10 shrink-0">
+          {(["north", "south"] as const).map((s) => (
+            <button
+              key={s}
+              onClick={() => setStyle(s)}
+              className={`px-3 py-1 text-xs rounded-lg font-semibold transition ${
+                style === s ? "bg-gold-400 text-black shadow-glow" : "text-gray-400 hover:text-white"
+              }`}
+            >
+              {s === "north" ? "North" : "South"}
+            </button>
+          ))}
         </div>
       </div>
 
-      {/* Chart Canvas Container */}
-      <div className="max-w-[420px] mx-auto aspect-square relative">
-        {style === "north" ? (
-          <NorthIndianSvg houseMap={houseMap} lagnaSignIndex={lagnaSignIndex} />
-        ) : (
-          <SouthIndianSvg houseMap={houseMap} lagnaSignIndex={lagnaSignIndex} />
-        )}
+      {variants.length > 1 && (
+        <div className="flex items-center gap-1.5 mb-4 flex-wrap">
+          {variants.map((v) => (
+            <button
+              key={v.key}
+              onClick={() => { setVargaKey(v.key); setSelected(null); }}
+              className={`px-3 py-1.5 text-[0.7rem] rounded-lg font-semibold border transition ${
+                v.key === varga.key
+                  ? "border-gold-400/60 bg-gold-400/10 text-gold-200"
+                  : "border-white/10 text-gray-400 hover:text-white hover:border-white/25"
+              }`}
+            >
+              {v.label}
+            </button>
+          ))}
+        </div>
+      )}
+
+      {/* Chart */}
+      <div className="max-w-[440px] mx-auto">
+        <svg
+          ref={svgRef}
+          viewBox={`0 0 ${CHART_SIZE} ${CHART_SIZE}`}
+          xmlns="http://www.w3.org/2000/svg"
+          className="w-full h-auto select-none"
+          role="img"
+          aria-label={`${varga.label}, ${style} Indian style`}
+        >
+          <rect width={CHART_SIZE} height={CHART_SIZE} rx="12" fill={COLORS.ink} />
+          {style === "north" ? (
+            <NorthChart varga={varga} selected={selected} onSelect={setSelected} />
+          ) : (
+            <SouthChart varga={varga} selected={selected} onSelect={setSelected} />
+          )}
+        </svg>
+      </div>
+
+      <Legend />
+
+      {selected !== null && <HouseDetail house={selected} varga={varga} onClose={() => setSelected(null)} />}
+
+      <div className="flex items-center justify-between gap-3 mt-4 pt-3 border-t border-white/5 flex-wrap">
+        <p className="text-[0.65rem] text-[var(--text-muted)]">
+          {selected === null ? "Tap any house for its significations." : `Showing house ${selected}.`}
+        </p>
+        <button
+          onClick={downloadPng}
+          className="text-xs text-gold-400 hover:text-gold-200 transition inline-flex items-center gap-1.5"
+        >
+          <Download className="w-3.5 h-3.5" /> Save chart as PNG
+        </button>
       </div>
     </div>
   );
 }
 
-// ── North Indian Diamond Chart (SVG) ──────────────────────────────
+// ── North Indian ──────────────────────────────────────────
 
-function NorthIndianSvg({
-  houseMap,
-  lagnaSignIndex,
+function NorthChart({
+  varga, selected, onSelect,
 }: {
-  houseMap: Record<number, HouseInfo>;
-  lagnaSignIndex: number;
+  varga: ChartVariant;
+  selected: number | null;
+  onSelect: (h: number | null) => void;
 }) {
-  // Coordinates for house label centers and planet list positions in 300x300 canvas
-  const housePositions: Record<number, { signX: number; signY: number; planetsX: number; planetsY: number }> = {
-    1:  { signX: 150, signY: 105, planetsX: 150, planetsY: 70 },
-    2:  { signX: 75,  signY: 35,  planetsX: 65,  planetsY: 60 },
-    3:  { signX: 35,  signY: 75,  planetsX: 60,  planetsY: 110 },
-    4:  { signX: 105, signY: 150, planetsX: 70,  planetsY: 150 },
-    5:  { signX: 35,  signY: 225, planetsX: 60,  planetsY: 190 },
-    6:  { signX: 75,  signY: 265, planetsX: 65,  planetsY: 240 },
-    7:  { signX: 150, signY: 195, planetsX: 150, planetsY: 230 },
-    8:  { signX: 225, signY: 265, planetsX: 235, planetsY: 240 },
-    9:  { signX: 265, signY: 225, planetsX: 240, planetsY: 190 },
-    10: { signX: 195, signY: 150, planetsX: 230, planetsY: 150 },
-    11: { signX: 265, signY: 75,  planetsX: 240, planetsY: 110 },
-    12: { signX: 225, signY: 35,  planetsX: 235, planetsY: 60 },
-  };
+  const cells = useMemo(() => northIndianCells(CHART_SIZE, CHART_PAD), []);
+  const frame = useMemo(() => northIndianFrame(CHART_SIZE, CHART_PAD), []);
 
   return (
-    <svg viewBox="0 0 300 300" className="w-full h-full drop-shadow-[0_0_15px_rgba(255,179,71,0.15)]">
-      <defs>
-        <linearGradient id="goldGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#ffb347" />
-          <stop offset="100%" stopColor="#ffcc00" />
-        </linearGradient>
-        <linearGradient id="bgGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-          <stop offset="0%" stopColor="#121324" />
-          <stop offset="100%" stopColor="#0a0b15" />
-        </linearGradient>
-      </defs>
+    <g>
+      <rect {...frame.outer} fill="none" stroke={COLORS.gold} strokeWidth="1.6" />
+      {frame.diagonals.map((d, i) => (
+        <line key={i} {...d} stroke={COLORS.goldDim} strokeWidth="1" />
+      ))}
+      <polygon points={frame.diamond} fill="none" stroke={COLORS.gold} strokeWidth="1.3" />
 
-      {/* Background Square */}
-      <rect x="5" y="5" width="290" height="290" fill="url(#bgGradient)" rx="10" stroke="#ffb347" strokeWidth="2" />
-
-      {/* Main Outer Box */}
-      <rect x="10" y="10" width="280" height="280" fill="none" stroke="#ffb347" strokeWidth="1.5" strokeOpacity="0.8" />
-
-      {/* Diagonals */}
-      <line x1="10" y1="10" x2="290" y2="290" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.6" />
-      <line x1="290" y1="10" x2="10" y2="290" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.6" />
-
-      {/* Central Diamond */}
-      <polygon points="150,10 290,150 150,290 10,150" fill="none" stroke="#ffb347" strokeWidth="1.5" strokeOpacity="0.9" />
-
-      {/* Houses Data */}
-      {Object.entries(housePositions).map(([houseStr, pos]) => {
-        const hNo = Number(houseStr);
-        const hData = houseMap[hNo];
-        if (!hData) return null;
-
-        // Sign index in Whole Sign (1-indexed zodiac sign number: 1=Aries ... 12=Pisces)
-        const signNum = ((lagnaSignIndex + hNo - 1) % 12) + 1;
-        const planets = hData.planets || [];
+      {cells.map((c) => {
+        const houseNo = c.index;
+        const signIndex = (varga.ascSignIndex + houseNo - 1) % 12;
+        const inSign = planetsInSign(varga.planets, signIndex);
+        const isSelected = selected === houseNo;
 
         return (
-          <g key={hNo}>
-            {/* Sign Number */}
+          <g
+            key={houseNo}
+            onClick={() => onSelect(isSelected ? null : houseNo)}
+            style={{ cursor: "pointer" }}
+          >
+            <polygon
+              points={c.polygon.map((p) => `${p.x},${p.y}`).join(" ")}
+              fill={isSelected ? "rgba(255,179,71,0.12)" : "transparent"}
+              stroke={isSelected ? COLORS.gold : "none"}
+              strokeWidth="1"
+            />
+
+            {/* Rashi number, toward the centre of the diagram */}
             <text
-              x={pos.signX}
-              y={pos.signY}
-              fill="#ffb347"
-              fontSize="11"
-              fontWeight="bold"
+              x={c.signAnchor.x}
+              y={c.signAnchor.y}
+              fill={COLORS.gold}
+              fontSize="10.5"
+              fontWeight="700"
               textAnchor="middle"
               dominantBaseline="central"
-              opacity="0.9"
+              opacity="0.85"
+              fontFamily="system-ui, sans-serif"
             >
-              {signNum}
+              {signIndex + 1}
             </text>
 
-            {/* Planets */}
-            {planets.length > 0 && (
-              <text
-                x={pos.planetsX}
-                y={pos.planetsY}
-                fill="#50c878"
-                fontSize="9"
-                fontWeight="600"
-                textAnchor="middle"
-                dominantBaseline="central"
-              >
-                {planets.map((p) => shortBody(p)).join(", ")}
-              </text>
-            )}
+            {houseNo === 1 && <AscMark cell={c} />}
+
+            <PlanetStack cell={c} planets={inSign} showDegrees={varga.showDegrees !== false} />
           </g>
         );
       })}
-
-      {/* Lagna Badge in House 1 */}
-      <text x="150" y="42" fill="#ffffff" fontSize="10" fontWeight="bold" textAnchor="middle">
-        LAGNA
-      </text>
-    </svg>
+    </g>
   );
 }
 
-// ── South Indian Grid Chart (SVG) ──────────────────────────────
+/** The Ascendant tick in house 1 of a North Indian chart. */
+function AscMark({ cell }: { cell: HouseCell }) {
+  return (
+    <text
+      x={cell.centroid.x}
+      y={cell.top + 13}
+      fill={COLORS.asc}
+      fontSize="9"
+      fontWeight="700"
+      textAnchor="middle"
+      fontFamily="system-ui, sans-serif"
+    >
+      Asc
+    </text>
+  );
+}
 
-function SouthIndianSvg({
-  houseMap,
-  lagnaSignIndex,
+/**
+ * Draws the planets of one house, fitted to the shape of that house.
+ *
+ * If nothing fits even at the smallest size the house shows a count instead of
+ * overflowing into its neighbours.
+ */
+function PlanetStack({
+  cell, planets, showDegrees, yShift = 0,
 }: {
-  houseMap: Record<number, HouseInfo>;
-  lagnaSignIndex: number;
+  cell: HouseCell;
+  planets: ChartPlanet[];
+  showDegrees: boolean;
+  yShift?: number;
 }) {
-  // South Indian chart has 12 fixed sign locations in a 4x4 grid:
-  // Top row: Pisces (12), Aries (1), Taurus (2), Gemini (3)
-  // Right col: Cancer (4), Leo (5), Virgo (6)
-  // Bottom row: Libra (7), Scorpio (8), Sagittarius (9), Capricorn (10)
-  // Left col: Aquarius (11)
+  const fitted = useMemo(() => {
+    if (planets.length === 0) return null;
+    const centre: Pt = { x: cell.centroid.x, y: cell.centroid.y + yShift };
+    return fitTokens(cell.polygon, centre, tokenVariants(planets, showDegrees), {
+      maxFont: 10,
+      minFont: 6,
+      padding: 4,
+    });
+  }, [cell, planets, showDegrees, yShift]);
 
-  const signGridPos: Record<number, { col: number; row: number }> = {
-    12: { col: 0, row: 0 },
-    1:  { col: 1, row: 0 },
-    2:  { col: 2, row: 0 },
-    3:  { col: 3, row: 0 },
-    4:  { col: 3, row: 1 },
-    5:  { col: 3, row: 2 },
-    6:  { col: 3, row: 3 },
-    7:  { col: 2, row: 3 },
-    8:  { col: 1, row: 3 },
-    9:  { col: 0, row: 3 },
-    10: { col: 0, row: 2 },
-    11: { col: 0, row: 1 },
-  };
+  if (planets.length === 0) return null;
 
-  const SIGN_NAMES = [
-    "Mesha", "Vrish", "Mith", "Kark", "Simh", "Kanya",
-    "Tula", "Vris", "Dhan", "Makar", "Kumbh", "Meen",
-  ];
-
-  // Map each sign number (1..12) to planets inside it
-  const signPlanets: Record<number, { planets: string[]; isLagna: boolean; houseNo: number }> = {};
-  for (let s = 1; s <= 12; s++) {
-    signPlanets[s] = { planets: [], isLagna: false, houseNo: 0 };
+  if (!fitted) {
+    return (
+      <text
+        x={cell.centroid.x}
+        y={cell.centroid.y + yShift}
+        fill={COLORS.planet}
+        fontSize="9"
+        textAnchor="middle"
+        dominantBaseline="central"
+        fontFamily="system-ui, sans-serif"
+      >
+        {planets.length} planets
+      </text>
+    );
   }
 
-  for (const h of Object.values(houseMap)) {
-    const sNum = ((lagnaSignIndex + h.house - 1) % 12) + 1;
-    signPlanets[sNum] = {
-      planets: h.planets || [],
-      isLagna: h.house === 1,
-      houseNo: h.house,
-    };
-  }
+  const { lines, fontSize, lineHeight } = fitted;
+  const startY = cell.centroid.y + yShift - ((lines.length - 1) * lineHeight) / 2;
 
-  const cellSize = 72;
-  const padding = 6;
+  // Walk the original planet order so each token keeps its own colour.
+  let idx = 0;
+  return (
+    <>
+      {lines.map((line, li) => {
+        const tokens = line.map(() => planets[idx++]);
+        return (
+          <text
+            key={li}
+            x={cell.centroid.x}
+            y={startY + li * lineHeight}
+            fontSize={fontSize}
+            fontWeight="600"
+            textAnchor="middle"
+            dominantBaseline="central"
+            fontFamily="system-ui, sans-serif"
+          >
+            {line.map((tok, ti) => (
+              <tspan key={ti} fill={planetFill(tokens[ti])}>
+                {ti > 0 ? "  " : ""}
+                {tok}
+              </tspan>
+            ))}
+          </text>
+        );
+      })}
+    </>
+  );
+}
+
+// ── South Indian ──────────────────────────────────────────
+
+function SouthChart({
+  varga, selected, onSelect,
+}: {
+  varga: ChartVariant;
+  selected: number | null;
+  onSelect: (h: number | null) => void;
+}) {
+  const cells = useMemo(() => southIndianCells(CHART_SIZE, CHART_PAD), []);
+  const inner = CHART_SIZE - CHART_PAD * 2;
+  const s = inner / 4;
 
   return (
-    <svg viewBox="0 0 300 300" className="w-full h-full drop-shadow-[0_0_15px_rgba(255,179,71,0.15)]">
-      {/* Background */}
-      <rect x="5" y="5" width="290" height="290" fill="#0c0d1a" rx="10" stroke="#ffb347" strokeWidth="2" />
-
-      {/* Grid Lines */}
-      {/* Outer Border */}
-      <rect x="6" y="6" width="288" height="288" fill="none" stroke="#ffb347" strokeWidth="1.5" strokeOpacity="0.8" />
-
-      {/* 4x4 Grid lines */}
-      <line x1="78" y1="6" x2="78" y2="294" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-      <line x1="150" y1="6" x2="150" y2="294" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-      <line x1="222" y1="6" x2="222" y2="294" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-
-      <line x1="6" y1="78" x2="294" y2="78" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-      <line x1="6" y1="150" x2="294" y2="150" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-      <line x1="6" y1="222" x2="294" y2="222" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.5" />
-
-      {/* Center 2x2 Empty Box Filled with Logo */}
-      <rect x="78" y="78" width="144" height="144" fill="#141528" stroke="#ffb347" strokeWidth="1" strokeOpacity="0.4" />
-      <text x="150" y="140" fill="#ffb347" fontSize="14" fontWeight="bold" textAnchor="middle">
-        VivaAI
+    <g>
+      <rect
+        x={CHART_PAD} y={CHART_PAD} width={inner} height={inner}
+        fill="none" stroke={COLORS.gold} strokeWidth="1.6"
+      />
+      {/* The hollow centre */}
+      <rect
+        x={CHART_PAD + s} y={CHART_PAD + s} width={s * 2} height={s * 2}
+        fill="rgba(255,255,255,0.02)" stroke={COLORS.goldDim} strokeWidth="1"
+      />
+      <text
+        x={CHART_SIZE / 2} y={CHART_SIZE / 2 - 6}
+        fill={COLORS.gold} fontSize="13" fontWeight="700" textAnchor="middle"
+        fontFamily="system-ui, sans-serif"
+      >
+        {varga.label}
       </text>
-      <text x="150" y="160" fill="#a0a0b4" fontSize="9" textAnchor="middle">
-        Vedic Birth Chart
+      <text
+        x={CHART_SIZE / 2} y={CHART_SIZE / 2 + 11}
+        fill="#8b8fa3" fontSize="8.5" textAnchor="middle"
+        fontFamily="system-ui, sans-serif"
+      >
+        Asc in {SIGN_SHORT[varga.ascSignIndex]}
       </text>
 
-      {/* Render 12 Sign Boxes */}
-      {Object.entries(signGridPos).map(([signStr, pos]) => {
-        const sNum = Number(signStr);
-        const cellX = padding + pos.col * cellSize;
-        const cellY = padding + pos.row * cellSize;
-        const info = signPlanets[sNum];
+      {cells.map((c) => {
+        const houseNo = ((c.signIndex - varga.ascSignIndex + 12) % 12) + 1;
+        const inSign = planetsInSign(varga.planets, c.signIndex);
+        const isAsc = houseNo === 1;
+        const isSelected = selected === houseNo;
+
+        // Rectangular cell reused through the same fitter as the diamond,
+        // so both layouts shrink text by identical rules.
+        const poly: Pt[] = [
+          { x: c.x, y: c.y + 15 },
+          { x: c.x + c.w, y: c.y + 15 },
+          { x: c.x + c.w, y: c.y + c.h },
+          { x: c.x, y: c.y + c.h },
+        ];
+        const pseudoCell: HouseCell = {
+          index: houseNo,
+          polygon: poly,
+          centroid: { x: c.x + c.w / 2, y: c.y + 15 + (c.h - 15) / 2 },
+          signAnchor: { x: c.x + 5, y: c.y + 9 },
+          top: c.y + 15,
+          bottom: c.y + c.h,
+        };
 
         return (
-          <g key={sNum}>
-            {/* Sign Title */}
-            <text x={cellX + 6} y={cellY + 14} fill="#ffb347" fontSize="9" fontWeight="bold" opacity="0.8">
-              {SIGN_NAMES[sNum - 1]} ({sNum})
+          <g key={c.signIndex} onClick={() => onSelect(isSelected ? null : houseNo)} style={{ cursor: "pointer" }}>
+            <rect
+              x={c.x} y={c.y} width={c.w} height={c.h}
+              fill={isSelected ? "rgba(255,179,71,0.12)" : "transparent"}
+              stroke={isAsc ? COLORS.asc : COLORS.goldDim}
+              strokeWidth={isAsc ? 1.6 : 0.8}
+            />
+            <text
+              x={c.x + 5} y={c.y + 11}
+              fill={isAsc ? COLORS.asc : COLORS.gold}
+              fontSize="8.5" fontWeight="700" opacity="0.9"
+              fontFamily="system-ui, sans-serif"
+            >
+              {SIGN_SHORT[c.signIndex]}
+              <tspan fill="#8b8fa3" fontWeight="400"> · {houseNo}</tspan>
             </text>
-
-            {/* Ascendant Marker */}
-            {info.isLagna && (
-              <g>
-                <line x1={cellX + 2} y1={cellY + 2} x2={cellX + 22} y2={cellY + 22} stroke="#ff3366" strokeWidth="2" />
-                <text x={cellX + 24} y={cellY + 14} fill="#ff3366" fontSize="8" fontWeight="bold">
-                  ASC
-                </text>
-              </g>
-            )}
-
-            {/* Planets in Sign */}
-            {info.planets.length > 0 && (
-              <text x={cellX + 6} y={cellY + 36} fill="#50c878" fontSize="9" fontWeight="600">
-                {info.planets.map((p) => shortBody(p)).join(", ")}
+            {isAsc && (
+              <text
+                x={c.x + c.w - 5} y={c.y + 11}
+                fill={COLORS.asc} fontSize="8" fontWeight="700" textAnchor="end"
+                fontFamily="system-ui, sans-serif"
+              >
+                Asc
               </text>
             )}
+            <PlanetStack cell={pseudoCell} planets={inSign} showDegrees={varga.showDegrees !== false} />
           </g>
         );
       })}
-    </svg>
+    </g>
   );
 }
 
-function shortBody(body: string): string {
-  const map: Record<string, string> = {
-    Sun: "Su", Moon: "Mo", Mars: "Ma", Mercury: "Me",
-    Jupiter: "Ju", Venus: "Ve", Saturn: "Sa", Rahu: "Ra", Ketu: "Ke",
-  };
-  return map[body] || body.substring(0, 2);
+// ── Legend & detail ───────────────────────────────────────
+
+function Legend() {
+  const items = [
+    { c: COLORS.planet, l: "Direct" },
+    { c: COLORS.retro, l: "Retrograde (℞)" },
+    { c: COLORS.combust, l: "Combust" },
+    { c: COLORS.benefic, l: "Exalted / own sign" },
+  ];
+  return (
+    <div className="flex items-center justify-center gap-x-4 gap-y-1.5 flex-wrap mt-3">
+      {items.map((i) => (
+        <span key={i.l} className="inline-flex items-center gap-1.5 text-[0.62rem] text-[var(--text-muted)]">
+          <span className="w-2 h-2 rounded-full shrink-0" style={{ background: i.c }} />
+          {i.l}
+        </span>
+      ))}
+    </div>
+  );
+}
+
+function HouseDetail({
+  house, varga, onClose,
+}: {
+  house: number;
+  varga: ChartVariant;
+  onClose: () => void;
+}) {
+  const signIndex = (varga.ascSignIndex + house - 1) % 12;
+  const occupants = planetsInSign(varga.planets, signIndex);
+
+  return (
+    <div className="mt-4 rounded-xl border border-gold-400/25 bg-gold-400/[0.04] p-4">
+      <div className="flex items-start justify-between gap-3 mb-2">
+        <div>
+          <div className="text-sm font-semibold text-white">
+            House {house} · {SIGN_SANSKRIT[signIndex]}{" "}
+            <span className="text-[var(--text-muted)] font-normal">({SIGN_SHORT[signIndex]})</span>
+          </div>
+          <div className="text-[0.68rem] text-gold-400 mt-0.5">Lord: {SIGN_LORD[signIndex]}</div>
+        </div>
+        <button onClick={onClose} className="text-xs text-[var(--text-muted)] hover:text-white shrink-0">
+          Close
+        </button>
+      </div>
+
+      <p className="text-xs text-[var(--text-secondary)] leading-relaxed mb-3">{HOUSE_MEANING[house]}</p>
+
+      {occupants.length === 0 ? (
+        <p className="text-xs text-[var(--text-muted)]">
+          No planet occupies this house. It is read through its lord, {SIGN_LORD[signIndex]}, and
+          through the planets aspecting it.
+        </p>
+      ) : (
+        <ul className="space-y-1.5">
+          {occupants.map((p) => (
+            <li key={p.body} className="text-xs flex flex-wrap items-baseline gap-x-2">
+              <span className="font-semibold" style={{ color: planetFill(p) }}>{p.body}</span>
+              {p.signDegree !== undefined && varga.showDegrees !== false && (
+                <span className="text-[var(--text-secondary)]">{degToken(p.signDegree, true)}</span>
+              )}
+              {p.nakshatra && (
+                <span className="text-[var(--text-muted)]">
+                  {p.nakshatra}{p.nakshatraPada ? ` pada ${p.nakshatraPada}` : ""}
+                </span>
+              )}
+              {p.isRetrograde && <span className="text-[#ff7a7a]">retrograde</span>}
+              {p.isCombust && <span className="text-[#8b8fa3]">combust</span>}
+              {p.dignity && p.dignity !== "Normal" && (
+                <span className="text-gold-400">{p.dignity}</span>
+              )}
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
+  );
 }

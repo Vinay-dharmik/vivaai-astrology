@@ -2,18 +2,18 @@ import { seoMeta } from "@/lib/seo/metadata";
 import { HeroSection } from "@/components/home/HeroSection";
 import { ZodiacSection } from "@/components/home/ZodiacSection";
 import { FeaturesSection } from "@/components/home/FeaturesSection";
-import { TestimonialsSection } from "@/components/home/TestimonialsSection";
+import { MethodologySection } from "@/components/home/MethodologySection";
 import { PricingSection } from "@/components/home/PricingSection";
 import { FAQSection } from "@/components/home/FAQSection";
 import { RelatedTools } from "@/components/ui/RelatedTools";
 
 export const metadata = seoMeta({
-  title: "VivaAI Astrology — Free Vedic Kundali, Horoscope & AI Predictions",
+  title: "VivaAI Astrology — Free Vedic Kundali, Horoscope & Birth Chart",
   description:
-    "Get your free AI-powered Vedic Kundali with accurate Lagna, Nakshatra, Dasha & remedies. Daily horoscope, kundali matching, zodiac compatibility & personalized astrology insights at vivaai.in. Trusted by thousands across India.",
+    "Generate a free Vedic Kundali with your Lagna, Nakshatra, Vimshottari Dasha and classical remedies. Daily horoscope, Ashtakoot matching, zodiac compatibility and Panchang — calculated from Meeus astronomical algorithms with the Lahiri Ayanamsa. No sign-up.",
   path: "/",
   keywords: [
-    "free kundali online", "vedic birth chart generator", "AI astrology predictions",
+    "free kundali online", "vedic birth chart generator", "janam kundali",
     "daily horoscope today", "kundali matching for marriage", "nakshatra finder",
     "zodiac sign compatibility", "panchang today", "mangal dosha calculator",
     "numerology calculator", "janam patri online free", "vedic jyotish",
@@ -27,7 +27,7 @@ export default function HomePage() {
       <HeroSection />
       <ZodiacSection />
       <FeaturesSection />
-      <TestimonialsSection />
+      <MethodologySection />
       <PricingSection />
       <FAQSection />
       <div className="section-container pb-12">

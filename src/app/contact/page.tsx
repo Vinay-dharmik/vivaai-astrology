@@ -75,7 +75,7 @@ export default function ContactPage() {
             <div>
               <h3 className="text-sm font-semibold text-white mb-1">Is the Kundali report accurate?</h3>
               <p className="text-xs text-[var(--text-muted)]">
-                Yes. We use Astronomy Engine with Lahiri Ayanamsa for precise sidereal calculations, matching traditional Vedic methods.
+                The astronomy is verified against published equinox, solstice and eclipse timings — Sun within 0.4 arcminutes, Moon within 0.9 — using Meeus’s algorithms and the Lahiri Ayanamsa. The interpretation follows classical Vedic rules. Astrological prediction itself is not scientifically validated; please read our disclaimer.
               </p>
             </div>
             <div>

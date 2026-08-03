@@ -3,36 +3,37 @@
  *
  * Google's quality guidelines lean hard on "who wrote this and why should I
  * believe them" — a site with no attributable author reads as content produced
- * at scale by nobody. Everything editorial on this site is bylined from here.
+ * at scale by nobody.
  *
- * ─────────────────────────────────────────────────────────────────────────────
- * EDIT THIS BEFORE REAPPLYING TO ADSENSE.
+ * The author here is not a qualified astrologer, and the copy says so in the
+ * first sentence. That is deliberate. The alternative — implying a Jyotish
+ * lineage that does not exist — is the same category of misrepresentation that
+ * got this site rejected from AdSense in the first place. Stating the limit
+ * plainly and then showing exactly which classical text each rule comes from
+ * is a stronger position than a vague claim to authority, because a reader can
+ * check the sources and cannot check a credential.
  *
- * The fields below are deliberately written to claim nothing that is not
- * already demonstrably true from the codebase. If you hold an actual Jyotish
- * qualification, have studied under a named teacher, or have been reading
- * charts for a known number of years, put that in `credentials` and `bio` —
- * that is the strongest trust signal you can add, and it is the one thing the
- * code cannot supply for you.
- *
- * Do not add a credential you do not hold. A false qualification is a worse
- * policy violation than having none.
- * ─────────────────────────────────────────────────────────────────────────────
+ * Do not add a qualification to this file that the author does not hold.
  */
 export const AUTHOR = {
   name: "Vinay Dharmik",
-  role: "a full-stack developer",
+  role: "a software developer, not a practising astrologer",
   location: "India",
   email: "contact@vivaai.in",
 
-  /** Shown under the name on the author card. Keep it factual. */
+  /** Shown under the name on the author card. Only verifiable statements. */
   credentials: [
-    "Wrote the astronomical engine this site runs on, from the published algorithms rather than a third-party library",
-    "Maintains the classical rule set against Brihat Parashara Hora Shastra, Phaladeepika and Saravali",
+    "Implemented this site's astronomical engine directly from Jean Meeus's published algorithms, rather than calling a third-party ephemeris",
+    "Verifies every release against independently published equinox, solstice and eclipse timings — the check script ships in the repository",
+    "Transcribes each interpretive rule from a named classical text and cites it at the point of use",
   ],
 
+  /** The one-line version, used in bylines. */
+  shortBio:
+    "Software developer. Builds the calculation engine behind VivaAI and transcribes the classical rules it applies. Not a qualified astrologer.",
+
   bio:
-    "I built the astronomy in this site from Jean Meeus's published algorithms and check it against equinox, solstice and eclipse timings I did not compute myself, because that is the only part of astrology that can be objectively right or wrong. The interpretive layer is a faithful transcription of what the classical texts state for a given placement — I am the developer who encoded those rules, not a practising astrologer, and I would rather you know that than assume otherwise.",
+    "I want to be straightforward about what I am and am not. I am not a Jyotishi. I have no lineage, no certification, and I do not read charts for people. I am a developer who became interested in how much of Vedic astrology is actually arithmetic, and who found that most free chart generators get that arithmetic quietly wrong. So I wrote the astronomy myself from Jean Meeus's published algorithms and check it against sky events whose timings other people measured — equinoxes, solstices, the geocentric conjunctions behind recorded eclipses. That part of this site can be objectively right or wrong, and I can show you that it is right. The interpretive layer is a different thing: it is a transcription of what named classical texts state for a given placement, cited so you can look it up. Where those texts disagree with each other, I say so rather than picking one and presenting it as settled. What I cannot give you is the judgement of an experienced astrologer weighing a whole chart at once. For anything that matters, see one.",
 
   /** Where a reader can verify the person exists. Empty entries are skipped. */
   profiles: [] as { label: string; url: string }[],
@@ -44,12 +45,12 @@ export function authorJsonLd() {
     "@type": "Person",
     name: AUTHOR.name,
     email: AUTHOR.email,
-    description: AUTHOR.bio,
+    description: AUTHOR.shortBio,
+    jobTitle: "Software developer",
     knowsAbout: [
-      "Vedic astrology",
-      "Jyotish",
       "Astronomical calculation",
       "Sidereal zodiac",
+      "Vedic astrology calculation methods",
     ],
     url: "https://vivaai.in/about",
     ...(AUTHOR.profiles.length ? { sameAs: AUTHOR.profiles.map((p) => p.url) } : {}),

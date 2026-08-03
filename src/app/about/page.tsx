@@ -125,11 +125,16 @@ export default function AboutPage() {
         </h2>
         <p>
           VivaAI is not a company. It is built and maintained by{" "}
-          <strong className="text-white">{AUTHOR.name}</strong>, {AUTHOR.role}, working alone
-          from {AUTHOR.location}. Saying &ldquo;our team&rdquo; would sound better and would
-          not be true.
+          <strong className="text-white">{AUTHOR.name}</strong> — {AUTHOR.role} — working
+          alone from {AUTHOR.location}. Saying &ldquo;our team&rdquo; would sound better and
+          would not be true.
         </p>
         <p>{AUTHOR.bio}</p>
+        <ul className="space-y-1.5 list-disc pl-5 text-xs">
+          {AUTHOR.credentials.map((c) => (
+            <li key={c}>{c}</li>
+          ))}
+        </ul>
         <p>
           Where the site states an astrological rule, it names the classical text the rule
           comes from, so you can check it against a source rather than take our word for

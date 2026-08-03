@@ -32,8 +32,8 @@ const SOURCES = [
     note: "Referenced for Tithi, Yoga, Karana and Rahu Kalam calculation conventions used on our Panchang page.",
   },
   {
-    title: "Astronomy Engine (open-source ephemeris)",
-    note: "Provides the underlying planetary positions. It implements VSOP87 and related models, which is why our sidereal longitudes agree with professional ephemerides to within a fraction of a degree.",
+    title: "Jean Meeus, Astronomical Algorithms (2nd ed., Willmann-Bell 1998)",
+    note: "The source of our solar and lunar periodic series, sidereal time, obliquity and lunar node formulae. We implement these directly rather than calling a third-party ephemeris, and verify the result against published equinox, solstice and eclipse timings.",
   },
   {
     title: "Lahiri Ayanamsa (Indian Calendar Reform Committee)",

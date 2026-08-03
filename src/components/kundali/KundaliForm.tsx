@@ -4,6 +4,9 @@ import { useState, useCallback } from "react";
 import { Loader2, Star } from "lucide-react";
 import { PlaceAutocomplete } from "@/components/ui/PlaceAutocomplete";
 import { KundaliResult } from "./KundaliResult";
+import type { PlanetStrength } from "@/lib/astrology/shadbala";
+import type { AshtakavargaResult } from "@/lib/astrology/ashtakavarga";
+import type { PlanetReport } from "@/lib/astrology/planetReport";
 
 interface PlaceData {
   label: string;
@@ -33,6 +36,7 @@ export interface PlanetRow {
   nakshatra: string;
   nakshatraPada: number;
   isRetrograde: boolean;
+  isCombust: boolean;
   signDegree: number;
   dignity: string;
 }
@@ -72,7 +76,16 @@ export interface KundaliData {
   houses: { house: number; sign: string; signEnglish: string; lord: string; planets: string[] }[];
   doshas: DoshaSummary;
   yogas: YogaSummary[];
-  navamsa: { planet: string; navamsaSign: string; navamsaEnglish: string; navamsaLord: string; dignity: string }[];
+  navamsa: { planet: string; navamsaSignIndex: number; navamsaSign: string; navamsaEnglish: string; navamsaLord: string; dignity: string }[];
+  /** Sign indices (0 = Aries) the chart component draws its house grid from. */
+  lagnaSignIndex: number;
+  moonSignIndex: number;
+  navamsaLagnaSignIndex: number;
+  /** Six-fold strength for the seven classical planets. */
+  shadbala: PlanetStrength[];
+  ashtakavarga: AshtakavargaResult;
+  /** One written analysis per planet, including Rahu and Ketu. */
+  planetReports: PlanetReport[];
   personality: string;
   career: string;
   marriage: string;

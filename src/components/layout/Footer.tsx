@@ -59,7 +59,7 @@ export function Footer() {
               <span className="font-sora font-bold gold-text">VivaAI</span>
             </Link>
             <p className="text-xs text-[var(--text-muted)] leading-relaxed">
-              AI-powered Vedic astrology platform. Get accurate Kundali, horoscopes, compatibility analysis and personalized remedies.
+              Sidereal Vedic astrology computed with the Lahiri Ayanamsa. Kundali, horoscopes, Ashtakoot matching and classical remedies — free, no sign-up.
             </p>
           </div>
 

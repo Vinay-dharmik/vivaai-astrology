@@ -18,7 +18,7 @@ export default function TermsPage() {
         <p>By accessing, browsing, or using any part of vivaai.in, you acknowledge that you have read, understood, and agree to be bound by these Terms, our <a href="/privacy" className="text-gold-400 hover:underline">Privacy Policy</a>, and our <a href="/disclaimer" className="text-gold-400 hover:underline">Disclaimer</a>. We reserve the right to modify these Terms at any time. Continued use after modifications constitutes acceptance of the updated Terms.</p>
 
         <h2 className="text-lg font-semibold text-gold-200 pt-2">2. Service Description</h2>
-        <p>VivaAI Astrology provides AI-powered and rule-based Vedic astrology tools and content, including but not limited to:</p>
+        <p>VivaAI Astrology provides rule-based Vedic astrology tools and content, including but not limited to:</p>
         <ul className="list-disc pl-5 space-y-1">
           <li>Kundali (birth chart) generation with planetary positions, Dasha, Dosha, and Yoga analysis</li>
           <li>Kundali matching (Ashtakoot Gun Milan) for marriage compatibility</li>

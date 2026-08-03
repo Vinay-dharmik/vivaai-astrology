@@ -20,7 +20,7 @@ export function HeroSection() {
           {/* Badge */}
           <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full border border-gold-400/30 bg-gold-400/5 mb-6">
             <Sparkles className="w-4 h-4 text-gold-400" />
-            <span className="text-xs text-gold-200 tracking-wide uppercase">AI-Powered Vedic Astrology</span>
+            <span className="text-xs text-gold-200 tracking-wide uppercase">Sidereal Vedic Astrology · Lahiri Ayanamsa</span>
           </div>
 
           {/* Title */}
@@ -31,9 +31,10 @@ export function HeroSection() {
           </h1>
 
           <p className="text-lg sm:text-xl text-[var(--text-secondary)] max-w-2xl mx-auto mb-10 leading-relaxed">
-            Get your <strong className="text-gold-400">free Vedic Kundali</strong> with accurate
-            Lagna, Nakshatra, Dasha timeline & AI-powered life predictions.
-            Trusted by thousands across India.
+            A <strong className="text-gold-400">free Vedic Kundali</strong> with your Lagna,
+            Nakshatra, Vimshottari Dasha timeline and the classical Yogas and Doshas your
+            chart actually forms — computed from published astronomical algorithms, not
+            filled in from a template.
           </p>
 
           {/* CTAs */}
@@ -58,10 +59,16 @@ export function HeroSection() {
           transition={{ delay: 0.5, duration: 0.6 }}
           className="mt-16 grid grid-cols-3 gap-6 max-w-lg mx-auto"
         >
+          {/*
+            Counts of what the tool computes — each one is checkable against the
+            output. The numbers that used to sit here ("10K+ generated", "99%
+            accuracy") were invented, and unverifiable statistics are a
+            misrepresentation whether or not anyone checks them.
+          */}
           {[
-            { val: "10K+", label: "Kundalis Generated" },
-            { val: "12", label: "Zodiac Signs" },
-            { val: "99%", label: "Accuracy" },
+            { val: "9", label: "Grahas computed" },
+            { val: "27", label: "Nakshatras & 108 Padas" },
+            { val: "23", label: "Classical Yogas checked" },
           ].map((s) => (
             <div key={s.label} className="text-center">
               <div className="text-2xl sm:text-3xl font-bold gold-text">{s.val}</div>

@@ -6,6 +6,14 @@ export interface BlogPost {
   description: string;
   date: string;
   category: string;
+  /**
+   * Derived from the word count at module load, never authored by hand.
+   *
+   * These used to be typed in, and every one of them was wrong in the same
+   * direction — a 320-word post was labelled "8 min read". Inflating a reading
+   * estimate to make an article look substantial is a small lie that the
+   * article itself immediately contradicts.
+   */
   readTime: string;
   content: string;
   /**
@@ -635,8 +643,19 @@ Explore your career potential with planet-in-house analysis on our [astrology pa
 
 
 
+/** Words per minute for the reading estimate — the usual prose figure. */
+const WPM = 220;
+
+export function readingTime(content: string): string {
+  const words = content.trim().split(/\s+/).filter(Boolean).length;
+  return `${Math.max(1, Math.round(words / WPM))} min read`;
+}
+
 /** All blog posts — hand-written + programmatically generated */
-export const BLOG_POSTS: BlogPost[] = [...MANUAL_POSTS, ...GENERATED_POSTS];
+export const BLOG_POSTS: BlogPost[] = [...MANUAL_POSTS, ...GENERATED_POSTS].map((p) => ({
+  ...p,
+  readTime: readingTime(p.content),
+}));
 
 /**
  * Hand-written articles only. This is what the blog index, the sitemap and

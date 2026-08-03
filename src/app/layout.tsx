@@ -12,15 +12,15 @@ const inter = Inter({ subsets: ["latin"], variable: "--font-inter" });
 const sora = Sora({ subsets: ["latin"], variable: "--font-sora", weight: ["400", "500", "600", "700", "800"] });
 
 export const metadata: Metadata = {
-  title: "VivaAI Astrology — Free Vedic Kundali & AI Astrology",
+  title: "VivaAI Astrology — Free Vedic Kundali & Birth Chart",
   description:
-    "Get your free AI-powered Vedic Kundali with accurate Lagna, Nakshatra, Dasha & remedies. Daily horoscope, kundali matching, zodiac compatibility & personalized astrology insights at vivaai.in. Trusted by thousands across India.",
+    "Free Vedic Kundali with your Lagna, Nakshatra, Vimshottari Dasha and classical remedies. Daily horoscope, Ashtakoot matching, zodiac compatibility and Panchang — computed from Meeus astronomical algorithms with the Lahiri Ayanamsa.",
   metadataBase: new URL("https://vivaai.in"),
   alternates: {
     canonical: "https://vivaai.in",
   },
   keywords: [
-    "free kundali", "vedic astrology", "birth chart", "AI astrology",
+    "free kundali", "vedic astrology", "birth chart", "janam kundali",
     "horoscope today", "kundali matching", "nakshatra compatibility",
     "zodiac compatibility", "panchang", "mangal dosha", "numerology",
     "astrology calculator", "vedic horoscope", "lagna chart",
@@ -33,8 +33,8 @@ export const metadata: Metadata = {
     apple: "/favicon.svg",
   },
   openGraph: {
-    title: "VivaAI Astrology — Free Vedic Kundali & AI Astrology",
-    description: "AI-powered Vedic astrology. Free Kundali, horoscopes, compatibility & remedies. Accurate birth charts trusted by thousands.",
+    title: "VivaAI Astrology — Free Vedic Kundali & Birth Chart",
+    description: "Sidereal Vedic astrology with the Lahiri Ayanamsa. Free Kundali, horoscopes, Ashtakoot matching and classical remedies.",
     url: "https://vivaai.in",
     siteName: "VivaAI Astrology",
     locale: "en_IN",
@@ -42,8 +42,8 @@ export const metadata: Metadata = {
   },
   twitter: {
     card: "summary_large_image",
-    title: "VivaAI Astrology — Free Vedic Kundali & AI Astrology",
-    description: "Free AI-powered Vedic birth chart. Lagna, Nakshatra, Dasha & remedies. Trusted by thousands.",
+    title: "VivaAI Astrology — Free Vedic Kundali & Birth Chart",
+    description: "Free sidereal Vedic birth chart. Lagna, Nakshatra, Vimshottari Dasha and classical remedies.",
   },
   robots: { index: true, follow: true },
   verification: {
@@ -58,7 +58,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     "@type": "WebSite",
     name: "VivaAI Astrology",
     url: "https://vivaai.in",
-    description: "Free AI-powered Vedic Kundali, daily horoscope, compatibility matching & personalized astrology insights.",
+    description: "Free Vedic Kundali, daily horoscope, Ashtakoot matching and chart-specific remedies, computed with the Lahiri Ayanamsa.",
     potentialAction: {
       "@type": "SearchAction",
       target: "https://vivaai.in/horoscope/{search_term_string}",

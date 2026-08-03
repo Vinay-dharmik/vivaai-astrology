@@ -1,17 +1,28 @@
 import { seoMeta } from "@/lib/seo/metadata";
 import { Breadcrumb } from "@/components/ui/Breadcrumb";
-import { Star, Shield, Eye, Heart, Zap, Globe, Users, Award } from "lucide-react";
+import { Star, Shield, Eye, Heart, Zap, Globe, Users, Award, BookOpen } from "lucide-react";
 import Link from "next/link";
+import { AUTHOR, SOURCES, authorJsonLd } from "@/lib/author";
 
 export const metadata = seoMeta({
-  title: "About VivaAI Astrology — Our Mission, Technology & Values",
+  title: "About VivaAI Astrology — Method, Sources & Who Builds It",
   path: "/about",
-  description: "Learn about VivaAI Astrology — India's AI-powered Vedic astrology platform. Discover our mission, technology, team, and how we blend ancient Vedic wisdom with modern astronomical precision.",
+  description: "How VivaAI computes Vedic birth charts: Meeus astronomical algorithms, the Lahiri Ayanamsa, and classical rules from Brihat Parashara Hora Shastra. Who builds the site, what is verified, and what is not.",
 });
 
 export default function AboutPage() {
   return (
     <div className="section-container py-12 max-w-3xl mx-auto">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{
+          __html: JSON.stringify({
+            "@context": "https://schema.org",
+            "@type": "AboutPage",
+            mainEntity: { "@context": "https://schema.org", ...authorJsonLd() },
+          }),
+        }}
+      />
       <Breadcrumb items={[{ label: "About Us" }]} />
       <h1 className="font-sora font-bold text-3xl sm:text-4xl gold-text mb-2">About VivaAI Astrology</h1>
       <p className="text-[var(--text-muted)] mb-8">Where ancient Vedic wisdom meets modern technology.</p>
@@ -26,7 +37,11 @@ export default function AboutPage() {
           We set out to change this by building a platform that combines the <strong className="text-gold-200">precision of modern astronomical computation</strong> with the <strong className="text-gold-200">wisdom of traditional Vedic interpretation</strong>. Our goal was not to replace the human astrologer but to democratize access to the foundational calculations and insights that form the basis of every astrological reading — the birth chart itself, planetary positions, Dasha timelines, Dosha analysis, and compatibility matching.
         </p>
         <p>
-          Today, VivaAI serves <strong className="text-white">thousands of users across India</strong> with free and premium Vedic astrology tools. From students checking their birth charts for the first time to families performing Kundali matching before marriage, our platform makes authentic Vedic astrology accessible to everyone, regardless of location or budget.
+          The site launched in May 2025 and is still young. Every calculation tool is free
+          and needs no account; the only paid item is an optional ₹19 PDF of a report you
+          can already read in full on the page. We would rather say that plainly than
+          quote a user count, because we do not publish traffic figures and you have no
+          way to check one.
         </p>
       </div>
 
@@ -40,7 +55,22 @@ export default function AboutPage() {
           At VivaAI, we honor this tradition by ensuring our calculations are <strong className="text-white">astronomically precise</strong> while our interpretations follow <strong className="text-gold-200">classical Vedic principles</strong>. We do not invent new astrological systems or make unfounded claims. Every prediction, every Dosha analysis, and every remedy suggestion traces back to established texts like <em>Brihat Parashara Hora Shastra</em>, <em>Phaladeepika</em>, and <em>Saravali</em>.
         </p>
         <p>
-          Where modern technology adds value, we embrace it. Our astronomical calculations use the <strong className="text-white">Astronomy Engine</strong> library — the same orbital mechanics models used by observatories and space agencies — ensuring that planetary positions in your birth chart are accurate to fractions of a degree. We apply the <strong className="text-gold-200">Lahiri Ayanamsa</strong>, recommended by the Indian government&apos;s Calendar Reform Committee, for sidereal conversion.
+          The astronomy is implemented directly rather than delegated to a black box. Solar
+          and lunar longitudes come from the periodic series published in Jean Meeus&apos;s{" "}
+          <em>Astronomical Algorithms</em>; the five visible planets come from Keplerian
+          orbital elements with the Jupiter–Saturn resonance terms and a light-time
+          correction applied. We then subtract the <strong className="text-gold-200">Lahiri
+          Ayanamsa</strong>, the sidereal standard adopted by the Indian government&apos;s
+          Calendar Reform Committee.
+        </p>
+        <p>
+          We check that work rather than assert it. A script in the repository compares the
+          engine against events whose timings are independently published — equinoxes,
+          solstices, and the geocentric New and Full Moons behind recorded eclipses. It
+          currently places the Sun within <strong className="text-white">0.4 arcminutes</strong> and
+          the Moon within <strong className="text-white">0.9 arcminutes</strong>; the visible planets
+          sit within a few arcminutes. For context, a Nakshatra Pada spans 200 arcminutes,
+          so this is far finer than any boundary the chart depends on.
         </p>
       </div>
 
@@ -49,12 +79,12 @@ export default function AboutPage() {
         <h2 className="text-xl font-sora font-bold text-gold-200 mb-4">Our Values</h2>
         <div className="grid sm:grid-cols-2 gap-4">
           {[
-            { icon: Star, title: "Accuracy First", desc: "Every calculation uses Astronomy Engine with Lahiri Ayanamsa. We match professional software to within 0.01° accuracy. No shortcuts, no approximations." },
+            { icon: Star, title: "Checked, Not Claimed", desc: "The engine is verified against equinox, solstice and eclipse timings by a script anyone can run. Sun within 0.4′, Moon within 0.9′. We publish the method, not a marketing number." },
             { icon: Globe, title: "Accessible to All", desc: "Core astrology tools are free forever — no sign-up walls, no hidden fees. We believe everyone deserves access to their own birth chart." },
             { icon: Shield, title: "Privacy by Design", desc: "Birth details are processed in your browser. We don't store personal astrological data on our servers. Your cosmic blueprint stays yours." },
             { icon: Eye, title: "Transparency", desc: "We clearly state our methodology, limitations, and the entertainment-purpose nature of astrological predictions. No misleading claims." },
             { icon: Heart, title: "Respect for Tradition", desc: "We follow classical Vedic astrology texts faithfully. Our interpretations are rooted in Parashara, not invented or sensationalized for clicks." },
-            { icon: Zap, title: "Continuous Innovation", desc: "We are actively developing AI-enhanced interpretations that combine traditional rules with modern language models for more personalized, nuanced insights." },
+            { icon: Zap, title: "Deterministic by Design", desc: "There is no language model anywhere in the reading. Every sentence is produced by rules keyed to your actual house lords, dignities and placements — so the same birth details always return the same chart." },
           ].map((val) => (
             <div key={val.title} className="glass-card p-5">
               <div className="flex items-center gap-3 mb-2">
@@ -91,14 +121,48 @@ export default function AboutPage() {
       {/* Our Team */}
       <div className="glass-card p-6 sm:p-8 space-y-4 text-[var(--text-secondary)] leading-relaxed text-sm mb-8">
         <h2 className="text-xl font-sora font-bold text-gold-200 flex items-center gap-2">
-          <Users className="w-5 h-5" /> Our Team
+          <Users className="w-5 h-5" /> Who Builds This
         </h2>
         <p>
-          VivaAI is built by a dedicated team of <strong className="text-white">technology enthusiasts and astrology practitioners</strong> based in India. Our team combines expertise in full-stack web development, astronomical computation, data science, and traditional Vedic astrology.
+          VivaAI is not a company. It is built and maintained by{" "}
+          <strong className="text-white">{AUTHOR.name}</strong>, {AUTHOR.role}, working alone
+          from {AUTHOR.location}. Saying &ldquo;our team&rdquo; would sound better and would
+          not be true.
         </p>
+        <p>{AUTHOR.bio}</p>
         <p>
-          We are passionate about making authentic Vedic knowledge accessible through technology. Every feature we build is reviewed for both <strong className="text-gold-200">technical accuracy</strong> (astronomical calculations) and <strong className="text-gold-200">traditional fidelity</strong> (Vedic interpretation rules), ensuring our users receive the same quality of analysis they would expect from a skilled astrologer.
+          Where the site states an astrological rule, it names the classical text the rule
+          comes from, so you can check it against a source rather than take our word for
+          it. Corrections are genuinely welcome — if you find a placement or a Yoga
+          condition we have got wrong, write to{" "}
+          <a href={`mailto:${AUTHOR.email}`} className="text-gold-400 hover:underline">
+            {AUTHOR.email}
+          </a>{" "}
+          and we will fix it and say so.
         </p>
+      </div>
+
+      {/* Sources — every interpretive rule on the site traces to one of these */}
+      <div className="glass-card p-6 sm:p-8 mb-8">
+        <h2 className="text-xl font-sora font-bold text-gold-200 flex items-center gap-2 mb-2">
+          <BookOpen className="w-5 h-5" /> Our Sources
+        </h2>
+        <p className="text-sm text-[var(--text-secondary)] leading-relaxed mb-5">
+          Nothing on this site is an original astrological doctrine. Every rule is drawn
+          from one of the texts below, and articles cite them by name at the point the rule
+          is used.
+        </p>
+        <ul className="space-y-3">
+          {Object.values(SOURCES).map((s) => (
+            <li key={s.key} className="border-l-2 border-gold-400/30 pl-4">
+              <div className="text-sm font-semibold text-white">
+                {s.title}{" "}
+                <span className="font-normal text-[var(--text-muted)]">— {s.author}</span>
+              </div>
+              <p className="text-xs text-[var(--text-muted)] leading-relaxed mt-0.5">{s.note}</p>
+            </li>
+          ))}
+        </ul>
       </div>
 
       {/* Trust Signals */}
@@ -107,7 +171,7 @@ export default function AboutPage() {
           { icon: Award, val: "9", label: "Grahas Computed" },
           { icon: Star, val: "27", label: "Nakshatras Covered" },
           { icon: Shield, val: "Lahiri", label: "Ayanamsa Standard" },
-          { icon: Zap, val: "0.01°", label: "Calculation Precision" },
+          { icon: Zap, val: "0.9′", label: "Measured Lunar Error" },
         ].map((s) => (
           <div key={s.label} className="glass-card p-4 text-center">
             <s.icon className="w-5 h-5 text-gold-400 mx-auto mb-2" />

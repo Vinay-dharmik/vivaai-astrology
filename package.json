@@ -6,7 +6,10 @@
     "dev": "next dev --turbopack",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "verify:engine": "node -e \"require('jiti')(process.cwd(),{interopDefault:true,esmResolve:true})('./scripts/verify-engine.ts')\"",
+    "verify:chart": "node -e \"require('jiti')(process.cwd(),{interopDefault:true,esmResolve:true})('./scripts/verify-chart-geometry.ts')\"",
+    "verify": "npm run verify:engine && npm run verify:chart"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.2",

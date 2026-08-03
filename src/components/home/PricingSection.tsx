@@ -73,7 +73,7 @@ export function PricingSection() {
           Full Vedic birth chart — completely free, no sign-up needed. Pay only if you want a PDF.
         </p>
         <p className="text-center text-xs text-gold-400 mb-12">
-          🔥 Over 10,000+ kundalis generated — trusted by thousands across India
+          Nothing is held back behind the payment — the ₹19 buys a PDF of a report you have already read in full.
         </p>
 
         <div className="grid sm:grid-cols-3 gap-6 max-w-4xl mx-auto">

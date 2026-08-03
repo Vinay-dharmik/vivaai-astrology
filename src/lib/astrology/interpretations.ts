@@ -1,3 +1,16 @@
+
+/**
+ * Ordinal suffix for a house number.
+ *
+ * Interpolating a bare "th" produced "1th house" and "2th house" throughout
+ * the readings, which is the sort of detail that makes a report look generated.
+ */
+function ord(n: number): string {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return n + "th";
+  return n + (["th", "st", "nd", "rd"][n % 10] || "th");
+}
+
 /**
  * Chart-specific Vedic interpretation engine.
  * Every function produces text driven by actual planetary placements,
@@ -114,7 +127,7 @@ export function describeTemperament(
   return [
     `${lagna.name} Lagna (${lagnaEl} sign) makes this native ${lagnaDesc[lagnaEl]}. The ${moon.name} Moon (${moon.lord}-ruled) creates an ${moonDesc[moonEl]} inner world.`,
     `Born in ${nak.name} Nakshatra, this native is ${nak_str}. ${sunDesc}. ${mercDesc.charAt(0).toUpperCase() + mercDesc.slice(1)}.`,
-    `Jupiter in the ${jupH}th house means ${jupDesc}. ${satDesc}.`,
+    `Jupiter in the ${ord(jupH)} house means ${jupDesc}. ${satDesc}.`,
   ].join(" ");
 }
 
@@ -183,7 +196,7 @@ export function predictCareer(
     ? "Career rises steadily. Peak recognition likely during 10th lord's Mahadasha or Jupiter transit over 10th house."
     : "Career growth is consistent. Promotions during beneficial Dasha periods of the 10th or 11th lord.";
 
-  return `10th house in ${tenthH.signEnglish} ruled by ${tenthLord} (${strength} — in ${tenthLordH}th house). Best-suited career domains: ${domainStr}. ${timing}`;
+  return `10th house in ${tenthH.signEnglish} ruled by ${tenthLord} (${strength} — in ${ord(tenthLordH)} house). Best-suited career domains: ${domainStr}. ${timing}`;
 }
 
 // ── Finance & Wealth ─────────────────────────────────────
@@ -229,7 +242,7 @@ export function predictFinance(
     ? "Financial discipline is critical. Avoid speculation and high-risk ventures. Wealth grows through service and persistent effort after age 30."
     : "Consistent income with moderate accumulation. Invest in property or education for long-term security.";
 
-  return `2nd lord ${l2} (${l2Dig}) indicates wealth from ${getWealthSource(l2, l2H)}. 11th lord ${l11} governs income (${l11Dig === "Exalted ⬆" || l11Dig === "Own Sign ★" ? "strong gains potential" : "steady income"}). Jupiter in ${jupH}th house ${jupGood ? "amplifies prosperity" : "requires patience for financial growth"}. Overall financial outlook: ${outlook}. ${advice}`;
+  return `2nd lord ${l2} (${l2Dig}) indicates wealth from ${getWealthSource(l2, l2H)}. 11th lord ${l11} governs income (${l11Dig === "Exalted ⬆" || l11Dig === "Own Sign ★" ? "strong gains potential" : "steady income"}). Jupiter in ${ord(jupH)} house ${jupGood ? "amplifies prosperity" : "requires patience for financial growth"}. Overall financial outlook: ${outlook}. ${advice}`;
 }
 
 function getWealthSource(lord: string, house: number): string {
@@ -381,7 +394,7 @@ export function predictHealth(
     ? "Avoid excessive heat, spicy food, and overexertion. Physical activity in moderated, structured form is beneficial."
     : "Maintain consistent dietary habits and moderate exercise aligned with your constitution.";
 
-  return `Lagna is ${lagna.english} — constitution is ${constitutional}. Key area of attention: ${vulnerableArea}. 6th lord ${l6} (disease indicator) ${sixthInDusthana ? "in a dusthana — illnesses are generally manageable and short-lived" : `in ${l6H}th house — monitor this system proactively`}. ${mental} ${reco}`;
+  return `Lagna is ${lagna.english} — constitution is ${constitutional}. Key area of attention: ${vulnerableArea}. 6th lord ${l6} (disease indicator) ${sixthInDusthana ? "in a dusthana — illnesses are generally manageable and short-lived" : `in ${ord(l6H)} house — monitor this system proactively`}. ${mental} ${reco}`;
 }
 
 // ── Spiritual Path ────────────────────────────────────────
@@ -414,7 +427,7 @@ export function predictSpiritual(
     ? "Meditation, past-life regression and non-attachment practices resonate deeply."
     : "Daily prayer, gratitude practice and attending spiritual discourses build the spiritual foundation.";
 
-  return `9th house of dharma governed by ${l9H} (${l9Dig}) in ${l9HH}th house. Spiritual path is ${path}. ${practice} Ketu in ${ketuH}th house ${ketuGood ? "supports liberation and intuitive wisdom" : "asks for gradual release of material attachments"}.`;
+  return `9th house of dharma governed by ${l9H} (${l9Dig}) in ${ord(l9HH)} house. Spiritual path is ${path}. ${practice} Ketu in ${ord(ketuH)} house ${ketuGood ? "supports liberation and intuitive wisdom" : "asks for gradual release of material attachments"}.`;
 }
 
 // ── Positives & Challenges ───────────────────────────────
@@ -440,21 +453,21 @@ export function getPositivesAndChallenges(
 
   // Jupiter positives
   if (KENDRA.includes(jupH) || TRIKONA.includes(jupH))
-    positives.push(`Jupiter in ${jupH}th house — natural wisdom, luck and expansion in career or education.`);
+    positives.push(`Jupiter in ${ord(jupH)} house — natural wisdom, luck and expansion in career or education.`);
   else if (jupH === 11)
     positives.push("Jupiter in 11th house — strong gains, large social network and fulfilled desires.");
 
   // Venus positives
   if ([1, 2, 4, 5, 7, 10, 11].includes(venH))
-    positives.push(`Venus in ${venH}th house — charm, creativity and harmonious relationships come naturally.`);
+    positives.push(`Venus in ${ord(venH)} house — charm, creativity and harmonious relationships come naturally.`);
 
   // Sun in positive house
   if ([1, 5, 9, 10, 11].includes(sunH))
-    positives.push(`Sun in ${sunH}th house — confidence, recognition from authority figures and leadership ability.`);
+    positives.push(`Sun in ${ord(sunH)} house — confidence, recognition from authority figures and leadership ability.`);
 
   // Mercury in positive house
   if ([1, 3, 5, 10].includes(mercH))
-    positives.push(`Mercury in ${mercH}th house — sharp intellect, strong communication and business aptitude.`);
+    positives.push(`Mercury in ${ord(mercH)} house — sharp intellect, strong communication and business aptitude.`);
 
   // Lagna element strength
   positives.push(`${lagna.element}-element Lagna (${lagna.english}) — core strengths include ${
@@ -467,7 +480,7 @@ export function getPositivesAndChallenges(
   // Saturn challenges
   if ([1, 7, 8].includes(satH))
     challenges.push({
-      issue: `Saturn in ${satH}th house — delays in ${satH === 7 ? "marriage or partnerships" : satH === 8 ? "inheritance or transformation events" : "self-confidence and physical vitality"}.`,
+      issue: `Saturn in ${ord(satH)} house — delays in ${satH === 7 ? "marriage or partnerships" : satH === 8 ? "inheritance or transformation events" : "self-confidence and physical vitality"}.`,
       solution: "Saturn rewards discipline. Consistent long-term action outperforms bursts of energy. Blue Sapphire or Iron ring (post Saturn Mahadasha consultation).",
     });
   else if (satH === 10)
@@ -479,14 +492,14 @@ export function getPositivesAndChallenges(
   // Rahu challenges
   if ([1, 7, 8, 12].includes(rahuH))
     challenges.push({
-      issue: `Rahu in ${rahuH}th house — unconventional desires, possible confusion or misdirection in ${rahuH === 7 ? "relationships" : rahuH === 8 ? "occult or joint finances" : rahuH === 12 ? "foreign matters or sleep" : "self-identity and direction"}.`,
+      issue: `Rahu in ${ord(rahuH)} house — unconventional desires, possible confusion or misdirection in ${rahuH === 7 ? "relationships" : rahuH === 8 ? "occult or joint finances" : rahuH === 12 ? "foreign matters or sleep" : "self-identity and direction"}.`,
       solution: "Rahu is best handled with focus and grounding practices. Avoid shortcuts and deceptive methods. Hessonite (Gomed) after proper astrological consultation.",
     });
 
   // Mars challenges
   if ([2, 4, 7, 12].includes(marsH))
     challenges.push({
-      issue: `Mars in ${marsH}th house — impulsive tendencies affecting ${marsH === 7 ? "relationships" : marsH === 2 ? "speech and family harmony" : marsH === 4 ? "home peace" : "subconscious restlessness"}.`,
+      issue: `Mars in ${ord(marsH)} house — impulsive tendencies affecting ${marsH === 7 ? "relationships" : marsH === 2 ? "speech and family harmony" : marsH === 4 ? "home peace" : "subconscious restlessness"}.`,
       solution: "Physical exercise channels Mars energy constructively. Recite Mangal mantra on Tuesdays. Red Coral gemstone may be considered.",
     });
 
@@ -524,9 +537,9 @@ export function estimateMarriageWindow(
   const signals: string[] = [];
   let start = 24, end = 29;
 
-  if ([1, 2, 5, 7, 11].includes(venH)) { start -= 1; signals.push(`Venus in ${venH}th house favours early relationship formation.`); }
-  if ([2, 5, 7, 9, 11].includes(jupH)) { start -= 1; signals.push(`Jupiter in ${jupH}th house bestows marriage blessings.`); }
-  if ([7, 8, 10, 12].includes(satH)) { start += 2; end += 3; signals.push(`Saturn in ${satH}th house — marriage is delayed but lasting.`); }
+  if ([1, 2, 5, 7, 11].includes(venH)) { start -= 1; signals.push(`Venus in ${ord(venH)} house favours early relationship formation.`); }
+  if ([2, 5, 7, 9, 11].includes(jupH)) { start -= 1; signals.push(`Jupiter in ${ord(jupH)} house bestows marriage blessings.`); }
+  if ([7, 8, 10, 12].includes(satH)) { start += 2; end += 3; signals.push(`Saturn in ${ord(satH)} house — marriage is delayed but lasting.`); }
   if (["Venus", "Moon", "Jupiter"].includes(dasha.current)) signals.push(`Current ${dasha.current} Mahadasha is a favourable period for marriage.`);
   if (!signals.length) signals.push("Standard marriage timing based on planetary positions.");
 

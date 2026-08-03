@@ -2,10 +2,10 @@ import type { Metadata } from "next";
 
 const SITE = "https://vivaai.in";
 const NAME = "VivaAI Astrology";
-const DEFAULT_DESC = "Free AI-powered Vedic Kundali, daily horoscope, compatibility matching & personalized astrology insights. Accurate birth charts with Lagna, Nakshatra, Dasha & remedies. Trusted by thousands across India for precise Vedic astrology calculations.";
+const DEFAULT_DESC = "Free Vedic Kundali, daily horoscope, Ashtakoot matching and chart-specific remedies. Birth charts with Lagna, Nakshatra and Vimshottari Dasha, computed from published astronomical algorithms using the Lahiri Ayanamsa.";
 
 const DEFAULT_KEYWORDS = [
-  "free kundali", "vedic astrology", "birth chart", "AI astrology",
+  "free kundali", "vedic astrology", "birth chart", "janam kundali",
   "horoscope today", "kundali matching", "nakshatra compatibility",
   "zodiac compatibility", "panchang", "mangal dosha", "numerology",
   "astrology calculator", "vedic horoscope", "lagna chart",
@@ -28,7 +28,7 @@ export function seoMeta(opts: {
   noindex?: boolean;
 }): Metadata {
   // Keep title under 60 chars by using short suffix
-  const title = opts.title ? `${opts.title} — VivaAI` : `${NAME} — Free Vedic Kundali & AI Astrology`;
+  const title = opts.title ? `${opts.title} — VivaAI` : `${NAME} — Free Vedic Kundali & Birth Chart`;
   // Keep description between 160-300 chars
   const description = opts.description || DEFAULT_DESC;
   const url = `${SITE}${opts.path || ""}`;

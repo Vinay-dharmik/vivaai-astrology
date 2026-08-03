@@ -7,7 +7,7 @@ import Link from "next/link";
 
 export const metadata = seoMeta({
   title: "Astrology Remedies — Gemstones, Mantras, Puja & Fasting",
-  description: "Free personalized Vedic astrology remedies. Gemstone suggestions, planet mantras, fasting days, lucky colors & donations based on your birth chart. Consult our AI-powered remedy finder.",
+  description: "Free Vedic astrology remedies drawn from your own chart — gemstones, planetary mantras, fasting days, colours and donations, selected by classical rules rather than from a generic list.",
   path: "/remedies",
 });
 

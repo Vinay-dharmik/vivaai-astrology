@@ -46,7 +46,7 @@ export default function BlogPage() {
         return (
           <div key={cat} id={`cat-${cat.toLowerCase().replace(/\s+/g, "-")}`} className="mb-10">
             <h2 className="font-sora font-bold text-lg gold-text mb-4 flex items-center gap-2">
-              <Tag className="w-4 h-4" /> {cat} <span className="text-xs text-[var(--text-muted)] font-normal">({catPosts.length} articles)</span>
+              <Tag className="w-4 h-4" /> {cat} <span className="text-xs text-[var(--text-muted)] font-normal">({catPosts.length} article{catPosts.length === 1 ? "" : "s"})</span>
             </h2>
             <div className="space-y-3">
               {catPosts.map((post) => (

@@ -91,19 +91,26 @@ export default function NewBlogPage() {
     if (mode === "manual") { setSaved(true); setTimeout(() => setSaved(false), 2500); }
   }, [draftId, title, slug, category, description, content, metaTitle, metaDesc, postStatus]);
 
-  // Generate TypeScript code snippet for manual publishing
+  // Generate a complete article file for src/lib/blog/articles/
   const generateCode = (): string => {
     const escContent = content.replace(/`/g, "\\`").replace(/\${/g, "\\${");
-    return `// Add this to src/lib/blog/generated-posts.ts (or posts.ts MANUAL_POSTS array)
-{
+    return `// 1. Save as src/lib/blog/articles/${slug}.ts
+// 2. Register it in src/lib/blog/articles/index.ts (import + add to ARTICLES)
+// readTime is derived from the word count automatically — do not add it.
+import type { BlogPost } from "../types";
+
+export const post: Omit<BlogPost, "readTime"> = {
   slug: "${slug}",
   title: \`${title}\`,
   description: \`${description}\`,
   date: "${new Date().toISOString().split("T")[0]}",
   category: "${category}",
-  readTime: "${readTime}",
+  // sources: ["bphs"], // optional — classical texts this draws on
   content: \`${escContent}\`,
-},`;
+  faqs: [
+    // { q: "…", a: "…" },
+  ],
+};`;
   };
 
   const handleCopyCode = async () => {
@@ -156,9 +163,9 @@ export default function NewBlogPage() {
         <div className="rounded-xl border border-gold-400/30 p-5 space-y-3" style={{ background: "rgba(15,15,30,0.9)" }}>
           <div className="flex items-center justify-between">
             <h3 className="font-sora font-semibold text-sm text-gold-200">Publish This Post</h3>
-            <span className="text-xs text-gray-500">Step 1: Copy → Step 2: Paste into posts.ts → Step 3: Deploy</span>
+            <span className="text-xs text-gray-500">Step 1: Copy → Step 2: New file in articles/ → Step 3: Register → Deploy</span>
           </div>
-          <p className="text-xs text-gray-400">Since there&apos;s no database, copy the generated TypeScript snippet below and paste it into <code className="text-gold-400 bg-white/5 px-1 py-0.5 rounded">src/lib/blog/posts.ts</code> inside the <code className="text-gold-400 bg-white/5 px-1 py-0.5 rounded">MANUAL_POSTS</code> array. Then redeploy.</p>
+          <p className="text-xs text-gray-400">Since there&apos;s no database, save the snippet below as a new file <code className="text-gold-400 bg-white/5 px-1 py-0.5 rounded">src/lib/blog/articles/{slug || "your-slug"}.ts</code>, then import it and add it to the <code className="text-gold-400 bg-white/5 px-1 py-0.5 rounded">ARTICLES</code> array in <code className="text-gold-400 bg-white/5 px-1 py-0.5 rounded">src/lib/blog/articles/index.ts</code>. Fill in the FAQs before publishing. Then redeploy.</p>
           <pre className="text-xs text-gray-400 bg-black/40 rounded-lg p-4 overflow-x-auto max-h-48 font-mono leading-relaxed whitespace-pre-wrap">
             {generateCode()}
           </pre>

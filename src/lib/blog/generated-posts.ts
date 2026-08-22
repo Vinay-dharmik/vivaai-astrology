@@ -419,10 +419,18 @@ Check Rahu-Ketu positions in your chart — [generate your free Kundali](/kundal
   },
 ];
 
-/** All generated blog posts combined */
+/**
+ * All generated blog posts combined.
+ *
+ * TOPIC_POSTS are short, template-grade pieces that overlap the hand-written
+ * articles (Nadi Dosha, Saturn/Jupiter/Rahu-Ketu transits, beginner Kundali,
+ * marriage compatibility). They are marked `generated` here so they stay
+ * crawlable for reference but are kept out of the editorial index, the sitemap
+ * and ad placement — the site is judged on the full-length articles, not these.
+ */
 export const GENERATED_POSTS: BlogPost[] = [
   ...ZODIAC_DATA.map(zodiacPost),
   ...PLANETS.map(planetPost),
   ...HOUSES.map(housePost),
-  ...TOPIC_POSTS,
+  ...TOPIC_POSTS.map((p) => ({ ...p, generated: true })),
 ];
